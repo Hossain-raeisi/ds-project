@@ -2,10 +2,16 @@
 #include <malloc.h>
 #include <string.h>
 
+
+// UTILS ---------------------------------------------------------------------------------------------------------------
 #define for_each(element, list) \
     for(ListElement *element = list->first; element != NULL; element = (ListElement *)element->next)
 
-// DATA STRUCTURES
+int max(int a, int b) {
+    return (a > b) ? a : b;
+}
+
+// DOUBLE LINKED LIST --------------------------------------------------------------------------------------------------
 
 typedef struct {
     void *content;
@@ -37,9 +43,9 @@ void addToList(DoubleLinkedList *doubleLinkedList, void *value);
 
 ListElement *iterOnList(ListElement *first, int iterations);
 
-ListElement *Pop(DoubleLinkedList *doubleLinkedList, void *value);
+ListElement *ListPop(DoubleLinkedList *doubleLinkedList, void *value);
 
-ListElement *PopIndex(DoubleLinkedList *doubleLinkedList, int index);
+ListElement *ListPopIndex(DoubleLinkedList *doubleLinkedList, int index);
 
 void RemoveElement(DoubleLinkedList *doubleLinkedList, ListElement *listElement);
 
@@ -72,7 +78,7 @@ ListElement *iterOnList(ListElement *first, int iterations) {
     return iterOnList((ListElement *) first->next, iterations - 1);
 }
 
-ListElement *Pop(DoubleLinkedList *doubleLinkedList, void *value) {
+ListElement *ListPop(DoubleLinkedList *doubleLinkedList, void *value) {
     ListElement *element = doubleLinkedList->first;
     for (int i = 0; i < doubleLinkedList->size; i++) {
         if (element->content == value) {
@@ -84,7 +90,7 @@ ListElement *Pop(DoubleLinkedList *doubleLinkedList, void *value) {
     return NULL;
 }
 
-ListElement *PopIndex(DoubleLinkedList *doubleLinkedList, int index) {
+ListElement *ListPopIndex(DoubleLinkedList *doubleLinkedList, int index) {
     ListElement *element = iterOnList(doubleLinkedList->first, index);
     RemoveElement(doubleLinkedList, element);
     return element;
@@ -114,7 +120,150 @@ ListElement *findElement(DoubleLinkedList *doubleLinkedList, int (*equals)(void 
     return NULL;
 }
 
-// MODELS
+// AVL TREE ---------------------------------------------------------------------------------------------------------
+
+typedef struct {
+    void *content;
+    struct Node *left;
+    struct Node *right;
+    int height;
+} Node;
+
+Node *NewNode(void *content);
+
+Node *RightRotate(Node *root);
+
+Node *LeftRotate(Node *root);
+
+Node *InsertToTree(Node *root, void *content, int (*compare)(void *, void *));
+
+Node *rotate(Node *root, void *content, int (*compare)(void *, void *));
+
+Node *Find(Node *root, void *content, int (*compare)(void *, void *));
+
+Node *TreePop(Node *root, void *content, int (*compare)(void *, void *));
+
+Node *getRightMostNode(Node *root);
+
+Node *getLeftMostNode(Node *root);
+
+
+Node *NewNode(void *content) {
+    Node *node = (Node *) malloc(sizeof(Node));
+    node->content = content;
+    return node;
+}
+
+Node *RightRotate(Node *root) {
+    Node *leftNode = root->left;
+    Node *rightLeftNode = leftNode->right;
+
+    leftNode->right = (struct Node *) root;
+    root->left = (struct Node *) rightLeftNode;
+
+    root->height = max(((Node *) root->left)->height, ((Node *) root->right)->height + 1);
+    leftNode->height = max(((Node *) leftNode->left)->height, ((Node *) leftNode->right)->height + 1);
+
+    return leftNode;
+}
+
+Node *LeftRotate(Node *root) {
+    Node *rightNode = root->right;
+    Node *leftRightNode = rightNode->left;
+
+    rightNode->left = (struct Node *) root;
+    root->right = (struct Node *) leftRightNode;
+
+    root->height = max(((Node *) root->right)->height, ((Node *) root->left)->height + 1);
+    rightNode->height = max(((Node *) rightNode->right)->height, ((Node *) rightNode->left)->height + 1);
+
+    return rightNode;
+}
+
+Node *InsertToTree(Node *root, void *content, int (*compare)(void *, void *)) {
+    if (root == NULL)
+        return (NewNode(content));
+
+    if (compare(root->content, content))
+        root->left = (struct Node *) InsertToTree((Node *) root->left, content, compare);
+    else
+        root->right = (struct Node *) InsertToTree((Node *) root->right, content, compare);
+
+    root->height = max(((Node *) root->right)->height, ((Node *) root->left)->height) + 1;
+
+    return rotate(root, content, compare);
+}
+
+Node *rotate(Node *root, void *content, int (*compare)(void *, void *)) {
+    int heightDifference = ((Node *) root->left)->height - ((Node *) root->right)->height;
+
+    if (heightDifference > 1) {
+        if (compare(((Node *) root->left)->content, content)) {
+            return RightRotate(root);
+        }
+        root->left = (struct Node *) LeftRotate((Node *) root->left);
+        return RightRotate(root);
+    } else if (heightDifference < -1) {
+        if (compare(content, ((Node *) root->left)->content)) {
+            return LeftRotate(root);
+        }
+        root->right = (struct Node *) RightRotate((Node *) root->right);
+        return LeftRotate(root);
+    }
+
+    return root;
+}
+
+Node *Find(Node *root, void *content, int (*compare)(void *, void *)) {
+    if (compare(root->content, content) == 0)
+        return root;
+
+    if (compare(root->content, content))
+        return Find((Node *) root->left, content, compare);
+
+    return Find((Node *) root->right, content, compare);
+}
+
+Node *TreePop(Node *root, void *content, int (*compare)(void *, void *)) {
+    if (compare(root->content, content) == 0) {
+
+        if (root->right != NULL) {
+            Node *newRoot = getLeftMostNode((Node *) root->right);
+            root->content = newRoot->content;
+            TreePop((Node *) root->right, newRoot->content, compare);
+        } else if (root->left != NULL) {
+            Node *newRoot = getRightMostNode((Node *) root->left);
+            root->content = newRoot->content;
+            TreePop((Node *) root->left, newRoot->content, compare);
+        } else {
+            root = NULL;
+        }
+    } else if (compare(root->content, content)) {
+        Node *leftNode = TreePop((Node *) root->left, content, compare);
+        root->left = (struct Node *) leftNode;
+    } else {
+        Node *rightNode = TreePop((Node *) root->right, content, compare);
+        root->right = (struct Node *) rightNode;
+    }
+
+    rotate(root, content, compare); // TODO
+
+    return root;
+}
+
+Node *getRightMostNode(Node *root) {
+    if (root->right == NULL)
+        return root;
+    return getRightMostNode((Node *) root->right);
+}
+
+Node *getLeftMostNode(Node *root) {
+    if (root->left == NULL)
+        return root;
+    return getLeftMostNode((Node *) root->left);
+}
+
+// MODELS --------------------------------------------------------------------------------------------------------------
 
 typedef struct {
     int number;
@@ -190,7 +339,7 @@ int equalsGradeWithCourseCode(Grade *grade, int courseCode) {
     return grade->course->code == courseCode;
 }
 
-// COMMANDS
+// COMMANDS ------------------------------------------------------------------------------------------------------------
 
 void AddStudent(DoubleLinkedList *students);
 
@@ -389,7 +538,6 @@ Grade *findGrade(DoubleLinkedList *students, DoubleLinkedList *courses, int stud
     return grade;
 }
 
-
 // ---------------------------------------------------------------------------------------------------------------------
 
 int main() {
@@ -421,6 +569,14 @@ int main() {
             NumberOfCourses(students);
         } else if (strcmp("NUMBERS", command) == 0) {
             NumberOfStudentsOfCourse(courses);
+        } else if (strcmp("SEARCHSN", command) == 0) {
+
+        } else if (strcmp("SEARCHCN", command) == 0) {
+
+        } else if (strcmp("SEARCHSC", command) == 0) {
+
+        } else if (strcmp("SEARCHCC", command) == 0) {
+
         } else {
             break;
         }
