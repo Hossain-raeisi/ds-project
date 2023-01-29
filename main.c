@@ -39,7 +39,7 @@ typedef struct {
 
 DoubleLinkedList *NewDoubleLinkedList();
 
-void addToList(DoubleLinkedList *doubleLinkedList, void *value);
+void InsertToList(DoubleLinkedList *doubleLinkedList, void *value);
 
 ListElement *iterOnList(ListElement *first, int iterations);
 
@@ -51,6 +51,7 @@ void RemoveElement(DoubleLinkedList *doubleLinkedList, ListElement *listElement)
 
 ListElement *findElement(DoubleLinkedList *doubleLinkedList, int (*equals)(void *, int), int id);
 
+
 DoubleLinkedList *NewDoubleLinkedList() {
     DoubleLinkedList *list = (DoubleLinkedList *) malloc(sizeof(DoubleLinkedList));
 
@@ -61,7 +62,7 @@ DoubleLinkedList *NewDoubleLinkedList() {
     return list;
 }
 
-void addToList(DoubleLinkedList *doubleLinkedList, void *value) {
+void InsertToList(DoubleLinkedList *doubleLinkedList, void *value) {
     ListElement *newElement = NewListElement(value, NULL, doubleLinkedList->last);
 
     if (doubleLinkedList->last != NULL)
@@ -145,7 +146,7 @@ Node *InsertToTree(Node *root, void *content, int (*compare)(void *, void *));
 
 Node *rotate(Node *root, int (*compare)(void *, void *));
 
-Node *Find(Node *root, char name[], int (*compareByName)(void *, char[]));
+Node *SearchTree(Node *root, char name[], int (*compareByName)(void *, char[]));
 
 Node *TreePop(Node *root, void *content, int (*compare)(void *, void *));
 
@@ -170,7 +171,7 @@ int getNodeHeight(Node *node) {
 Node *LeftRotate(Node *root) {
     Node *leftNode = (Node *) root->left;
     Node *rightLeftNode = NULL;
-    if (leftNode!= NULL)
+    if (leftNode != NULL)
         rightLeftNode = (Node *) leftNode->right;
 
     leftNode->right = (struct Node *) root;
@@ -215,12 +216,13 @@ Node *rotate(Node *root, int (*compare)(void *, void *)) {
     int heightDifference = getNodeHeight((Node *) root->left) - getNodeHeight((Node *) root->right);
 
     if (heightDifference < -1) {
-        if (getNodeHeight((Node *)((Node *) root->right)->right) > getNodeHeight((Node *)((Node *) root->right)->left))
+        if (getNodeHeight((Node *) ((Node *) root->right)->right) >
+            getNodeHeight((Node *) ((Node *) root->right)->left))
             return RightRotate(root);
         root->right = (struct Node *) LeftRotate((Node *) root->right);
         return RightRotate(root);
     } else if (heightDifference > 1) {
-        if (getNodeHeight((Node *)((Node *) root->left)->left) > getNodeHeight((Node *)((Node *) root->left)->right))
+        if (getNodeHeight((Node *) ((Node *) root->left)->left) > getNodeHeight((Node *) ((Node *) root->left)->right))
             return LeftRotate(root);
         root->left = (struct Node *) RightRotate((Node *) root->left);
         return LeftRotate(root);
@@ -229,14 +231,14 @@ Node *rotate(Node *root, int (*compare)(void *, void *)) {
     return root;
 }
 
-Node *Find(Node *root, char name[], int (*compareByName)(void *, char[])) {
+Node *SearchTree(Node *root, char name[], int (*compareByName)(void *, char[])) {
     if (compareByName(root->content, name) == 0)
         return root;
 
     if (compareByName(root->content, name) == 1)
-        return Find((Node *) root->left, name, compareByName);
+        return SearchTree((Node *) root->left, name, compareByName);
 
-    return Find((Node *) root->right, name, compareByName);
+    return SearchTree((Node *) root->right, name, compareByName);
 }
 
 Node *TreePop(Node *root, void *content, int (*compare)(void *, void *)) {
@@ -278,6 +280,83 @@ Node *getLeftMostNode(Node *root) {
     if (root->left == NULL)
         return root;
     return getLeftMostNode((Node *) root->left);
+}
+
+// HASH TABLE ----------------------------------------------------------------------------------------------------------
+
+typedef struct {
+    int a, b;
+    int prime;
+    int size;
+    int filled;
+    float fillFactor;
+    DoubleLinkedList *buckets[];
+} HashTable;
+
+HashTable *NewHashTable(int size, int a, int b, int prime, float fillFactor);
+
+void InsertToHashTable(HashTable **hashTable, void *content, int id);
+
+void *SearchHashTable(HashTable *hashTable, int (*equals)(void *, int), int id);
+
+void HashTablePop(HashTable **hashTable, int (*equals)(void *, int), int id);
+
+HashTable *doubleHashTableSize(HashTable *hashTable);
+
+HashTable *halfHashTableSize(HashTable *hashTable);
+
+int hash(HashTable *hashTable, int id);
+
+
+void InsertToHashTable(HashTable **hashTable, void *content, int id) {
+    int hashResult = hash(*hashTable, id);
+    InsertToList((*hashTable)->buckets[hashResult], content);
+    (*hashTable)->filled += 1;
+
+    if ((*hashTable)->filled >= (*hashTable)->size) {
+        *hashTable = doubleHashTableSize(*hashTable);
+    }
+}
+
+void *SearchHashTable(HashTable *hashTable, int (*equals)(void *, int), int id) {
+    int hashResult = hash(hashTable, id);
+    ListElement *listElement = findElement(hashTable->buckets[hashResult], equals, id);
+    return listElement->content;
+}
+
+void HashTablePop(HashTable **hashTable, int (*equals)(void *, int), int id) {
+    int hashResult = hash(*hashTable, id);
+    ListElement *listElement = findElement((*hashTable)->buckets[hashResult], equals, id);
+    RemoveElement((*hashTable)->buckets[hashResult], listElement);
+    (*hashTable)->filled -= 1;
+
+    if ((*hashTable)->filled <= (*hashTable)->size * (*hashTable)->fillFactor) {
+        *hashTable = halfHashTableSize(*hashTable);
+    }
+}
+
+HashTable *doubleHashTableSize(HashTable *hashTable) {
+    HashTable *newHashTable = NewHashTable(hashTable->size / 2, hashTable->a, hashTable->b, hashTable->prime, hashTable->fillFactor);
+    for (int i =0;i < hashTable->size; i++) {
+        for_each(element, hashTable->buckets[i]) {
+            InsertToHashTable(newHashTable, element->content, element->content->id);
+        }
+    }
+    return newHashTable;
+}
+
+HashTable *halfHashTableSize(HashTable *hashTable) {
+    HashTable *newHashTable = NewHashTable(2 * hashTable->size, hashTable->a, hashTable->b, hashTable->prime, hashTable->fillFactor);
+    for (int i =0;i < hashTable->size; i++) {
+        for_each(element, hashTable->buckets[i]) {
+            InsertToHashTable(newHashTable, element->content, element->content->id);
+        }
+    }
+    return newHashTable;
+}
+
+int hash(HashTable *hashTable, int id) {
+    return ((hashTable->a * id + hashTable->b) % hashTable->prime) % hashTable->size;
 }
 
 // MODELS --------------------------------------------------------------------------------------------------------------
@@ -470,7 +549,7 @@ void AddStudent(DoubleLinkedList *studentsList, Node **studentsTree) {
     scanf("%s", name);
 
     Student *student = NewStudent(studentNumber, name);
-    addToList(studentsList, student);
+    InsertToList(studentsList, student);
     *studentsTree = InsertToTree(*studentsTree, student, (int (*)(void *, void *)) compareStudent);
 }
 
@@ -482,7 +561,7 @@ void AddCourse(DoubleLinkedList *coursesList, Node **coursesTree) {
     scanf("%s", name);
 
     Course *course = NewCourse(code, name);
-    addToList(coursesList, course);
+    InsertToList(coursesList, course);
     *coursesTree = InsertToTree(*coursesTree, course, (int (*)(void *, void *)) compareCourse);
 }
 
@@ -503,8 +582,8 @@ void AddGrade(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList) {
 
     Grade *grade = NewGrade(student, course, score, semesterCode);
 
-    addToList(student->grades, grade);
-    addToList(course->students, student);
+    InsertToList(student->grades, grade);
+    InsertToList(course->students, student);
 }
 
 void EditStudent(DoubleLinkedList *studentsList) {
@@ -644,7 +723,7 @@ void SearchStudentByName(Node *studentsTree) {
     char name[50];
     scanf("%s", name);
 
-    Student *student = (Student *) Find(studentsTree, name, (int (*)(void *, char *)) compareStudentAndName)->content;
+    Student *student = (Student *) SearchTree(studentsTree, name, (int (*)(void *, char *)) compareStudentAndName)->content;
     PrintStudent(student);
 }
 
@@ -652,7 +731,7 @@ void SearchCourseByName(Node *coursesTree) {
     char name[10];
     scanf("%s", name);
 
-    Course *course = (Course *) Find(coursesTree, name, (int (*)(void *, char *)) compareCourseAndName);
+    Course *course = (Course *) SearchTree(coursesTree, name, (int (*)(void *, char *)) compareCourseAndName);
     PrintCourse(course);
 }
 
@@ -704,3 +783,24 @@ int main() {
 
     return 0;
 }
+
+/*
+ADDS 11111111 alireza
+ADDS 66666666 shabnam
+ADDS 55555555 omid
+ADDS 44444444 karan
+ADDS 22222222 erfan
+ADDS 33333333 hossein
+
+DELETES 44444444
+
+SEARCHSN alireza
+SEARCHSN erfan
+SEARCHSN hossein
+
+
+
+DELETES 12345678
+SEARCHSN hossein
+ADDC 12345 ds
+*/
