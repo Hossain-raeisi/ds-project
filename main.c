@@ -51,6 +51,10 @@ void RemoveElement(DoubleLinkedList *doubleLinkedList, ListElement *listElement)
 
 ListElement *findElement(DoubleLinkedList *doubleLinkedList, int (*equals)(void *, int), int id);
 
+void InsertToSortedList(DoubleLinkedList *doubleLinkedList, void *value, int (*compare)(void *, void *));
+
+ListElement *getBiggestSmallerElement(DoubleLinkedList *doubleLinkedList, void *value, int (*compare)(void *, void *));
+
 
 DoubleLinkedList *NewDoubleLinkedList() {
     DoubleLinkedList *list = (DoubleLinkedList *) malloc(sizeof(DoubleLinkedList));
@@ -127,6 +131,42 @@ ListElement *findElement(DoubleLinkedList *doubleLinkedList, int (*equals)(void 
     return NULL;
 }
 
+void InsertToSortedList(DoubleLinkedList *doubleLinkedList, void *value, int (*compare)(void *, void *)) {
+    // if value is already in list returns and won't do anything
+    ListElement *biggestSmallerElement = getBiggestSmallerElement(doubleLinkedList, value, compare);
+    if (compare(biggestSmallerElement->content, value) == 0)
+        return;
+
+    ListElement *newElement = NewListElement(value, NULL, NULL);
+
+    if (biggestSmallerElement == NULL) {
+        if (doubleLinkedList->size > 0) {
+            newElement->next = (struct ListElement *) doubleLinkedList->first;
+        }
+        doubleLinkedList->first = newElement;
+    } else {
+        if (biggestSmallerElement->next != NULL) {
+            newElement->next = (struct ListElement *) biggestSmallerElement;
+        }
+        biggestSmallerElement->next = (struct ListElement *) newElement;
+    }
+
+    doubleLinkedList->size += 1;
+}
+
+ListElement *getBiggestSmallerElement(DoubleLinkedList *doubleLinkedList, void *value, int (*compare)(void *, void *)) {
+    // the given list should be already sorted
+    if (compare(doubleLinkedList->first->content, value) == 1)
+        return NULL;
+
+    ListElement *element = doubleLinkedList->first;
+    while (compare(element->content, value) == -1) {
+        element = iterOnList(element, 1);
+    }
+
+    return element;
+}
+
 // AVL TREE ---------------------------------------------------------------------------------------------------------
 
 typedef struct {
@@ -136,7 +176,7 @@ typedef struct {
     int height;
 } BinaryTreeNode;
 
-BinaryTreeNode *NewNode(void *content);
+BinaryTreeNode *NewBinaryTreeNode(void *content);
 
 int getNodeHeight(BinaryTreeNode *node);
 
@@ -157,7 +197,7 @@ BinaryTreeNode *getRightMostNode(BinaryTreeNode *root);
 BinaryTreeNode *getLeftMostNode(BinaryTreeNode *root);
 
 
-BinaryTreeNode *NewNode(void *content) {
+BinaryTreeNode *NewBinaryTreeNode(void *content) {
     BinaryTreeNode *node = (BinaryTreeNode *) malloc(sizeof(BinaryTreeNode));
     node->content = content;
     node->height = 1;
@@ -180,7 +220,8 @@ BinaryTreeNode *LeftRotate(BinaryTreeNode *root) {
     root->left = (struct BinaryTreeNode *) rightLeftNode;
 
     root->height = max(getNodeHeight((BinaryTreeNode *) root->left), getNodeHeight((BinaryTreeNode *) root->right) + 1);
-    leftNode->height = max(getNodeHeight((BinaryTreeNode *) leftNode->left), getNodeHeight((BinaryTreeNode *) leftNode->right) + 1);
+    leftNode->height = max(getNodeHeight((BinaryTreeNode *) leftNode->left),
+                           getNodeHeight((BinaryTreeNode *) leftNode->right) + 1);
 
     return leftNode;
 }
@@ -195,14 +236,15 @@ BinaryTreeNode *RightRotate(BinaryTreeNode *root) {
     root->right = (struct BinaryTreeNode *) leftRightNode;
 
     root->height = max(getNodeHeight((BinaryTreeNode *) root->right), getNodeHeight((BinaryTreeNode *) root->left) + 1);
-    rightNode->height = max(getNodeHeight((BinaryTreeNode *) rightNode->right), getNodeHeight((BinaryTreeNode *) rightNode->left) + 1);
+    rightNode->height = max(getNodeHeight((BinaryTreeNode *) rightNode->right),
+                            getNodeHeight((BinaryTreeNode *) rightNode->left) + 1);
 
     return rightNode;
 }
 
 BinaryTreeNode *InsertToTree(BinaryTreeNode *root, void *content, int (*compare)(void *, void *)) {
     if (root == NULL)
-        return (NewNode(content));
+        return (NewBinaryTreeNode(content));
 
     if (compare(root->content, content) == 1)
         root->left = (struct BinaryTreeNode *) InsertToTree((BinaryTreeNode *) root->left, content, compare);
@@ -224,7 +266,8 @@ BinaryTreeNode *rotate(BinaryTreeNode *root, int (*compare)(void *, void *)) {
         root->right = (struct BinaryTreeNode *) LeftRotate((BinaryTreeNode *) root->right);
         return RightRotate(root);
     } else if (heightDifference > 1) {
-        if (getNodeHeight((BinaryTreeNode *) ((BinaryTreeNode *) root->left)->left) > getNodeHeight((BinaryTreeNode *) ((BinaryTreeNode *) root->left)->right))
+        if (getNodeHeight((BinaryTreeNode *) ((BinaryTreeNode *) root->left)->left) >
+            getNodeHeight((BinaryTreeNode *) ((BinaryTreeNode *) root->left)->right))
             return LeftRotate(root);
         root->left = (struct BinaryTreeNode *) RightRotate((BinaryTreeNode *) root->left);
         return LeftRotate(root);
@@ -265,7 +308,8 @@ BinaryTreeNode *TreePop(BinaryTreeNode *root, void *content, int (*compare)(void
     }
 
     if (root != NULL) {
-        root->height = max(getNodeHeight((BinaryTreeNode *) root->left), getNodeHeight((BinaryTreeNode *) root->right) + 1);
+        root->height = max(getNodeHeight((BinaryTreeNode *) root->left),
+                           getNodeHeight((BinaryTreeNode *) root->right) + 1);
         rotate(root, compare);
     }
 
@@ -376,6 +420,95 @@ HashTable *halfHashTableSize(HashTable *hashTable, int (*hash)(HashTable *, void
 
 int hash(HashTable *hashTable, int id) {
     return ((hashTable->a * id + hashTable->b) % hashTable->prime) % hashTable->size;
+}
+
+// GRAPH ---------------------------------------------------------------------------------------------------------------
+
+typedef struct {
+    void *content;
+    DoubleLinkedList *children;
+    int isVisited;
+} GraphNode;
+
+typedef struct {
+    DoubleLinkedList *nodes;
+    int size;
+} Graph;
+
+GraphNode *NewGraphNode(void *content);
+
+Graph *NewGraph();
+
+void WhitenNodes(DoubleLinkedList *nodes);
+
+DoubleLinkedList *GetAllDescendants(GraphNode *root, int (*compare)(void *, void *));
+
+int IsDescendant(GraphNode *node, GraphNode *root, DoubleLinkedList *visited, int (*compare)(void *, void *));
+
+
+GraphNode *NewGraphNode(void *content) {
+    GraphNode *node = (GraphNode *) malloc(sizeof(GraphNode));
+
+    node->content = content;
+    node->children = NewDoubleLinkedList();
+    node->isVisited = 0;
+
+    return node;
+}
+
+Graph *NewGraph() {
+    Graph *graph = (Graph *) malloc(sizeof(Graph));
+
+    graph->nodes = NewDoubleLinkedList();
+    graph->size = 0;
+
+    return graph;
+}
+
+void WhitenNodes(DoubleLinkedList *nodes) {
+    for_each(element, nodes) {
+        ((GraphNode *) element->content)->isVisited = 0;
+    }
+}
+
+DoubleLinkedList *GetAllDescendants(GraphNode *root, int (*compare)(void *, void *)) {
+    // Note: WhitenNodes should be called on the result
+
+    DoubleLinkedList *descendants = NewDoubleLinkedList();
+    InsertToList(descendants, root);
+    root->isVisited = 1;
+
+    for_each(childElement, root->children) {
+        if (!((GraphNode *) childElement->content)->isVisited) {
+            for_each(grandChildElement, GetAllDescendants((GraphNode *) childElement->content, compare)) {
+                InsertToSortedList(descendants, grandChildElement->content, compare);
+            }
+        }
+    }
+
+    return descendants;
+}
+
+int IsDescendant(GraphNode *node, GraphNode *root, DoubleLinkedList *visited, int (*compare)(void *, void *)) {
+    // Note: WhitenNodes should be called on the DoubleLinkedList visited
+    if (root->isVisited)
+        return 0;
+
+    root->isVisited = 1;
+    InsertToList(visited, root);
+
+    if (compare(root, node) == 0) {
+        return 1;
+    }
+
+    for_each(element, root->children) {
+        if (!((GraphNode *) element->content)->isVisited) {
+            if (IsDescendant(node, (GraphNode *) element->content, visited, compare))
+                return 1;
+        }
+    }
+
+    return 0;
 }
 
 // MODELS --------------------------------------------------------------------------------------------------------------
