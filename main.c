@@ -160,7 +160,7 @@ ListElement *getBiggestSmallerElement(DoubleLinkedList *doubleLinkedList, void *
         return NULL;
 
     ListElement *element = doubleLinkedList->first;
-    while (element->next != NULL && compare(((ListElement *)element->next)->content, value) != 1) {
+    while (element->next != NULL && compare(((ListElement *) element->next)->content, value) != 1) {
         element = iterOnList(element, 1);
     }
 
@@ -568,6 +568,10 @@ int equalsGraphNodeCourse(GraphNode *graphNode, int courseCode);
 
 int compareGraphNodeCourse(GraphNode *graphNode1, GraphNode *graphNode2);
 
+int IsStudentBetter(Student *student1, Student *student2);
+
+int equalsGraphNodeStudent(GraphNode *graphNode, int studentNumber);
+
 
 Student *NewStudent(int number, char name[30]) {
     Student *student = (Student *) malloc(sizeof(Student));
@@ -713,6 +717,30 @@ int compareGraphNodeCourse(GraphNode *graphNode1, GraphNode *graphNode2) {
     return compareCourse(graphNode1->content, graphNode2->content);
 }
 
+int IsStudentBetter(Student *student1, Student *student2) {
+    int student1BetterScores = 0;
+    int commonCourses = 0;
+
+    for_each(element, student1->grades) {
+        Grade *grade1 = (Grade *) element->content;
+        Grade *grade2 = (Grade *) SearchList(student2->grades, (int (*)(void *, int)) equalsGradeWithCourseCode,
+                                             grade1->course->code)->content;
+        if (grade2 != NULL) {
+            commonCourses += 1;
+            if (grade1 > grade2)
+                student1BetterScores += 1;
+        }
+    }
+
+    if (commonCourses > 0 && student1BetterScores > 0.5 * commonCourses)
+        return 1;
+    return 0;
+}
+
+int equalsGraphNodeStudent(GraphNode *graphNode, int studentNumber) {
+    return ((Student *) graphNode->content)->number == studentNumber;
+}
+
 
 // COMMANDS ------------------------------------------------------------------------------------------------------------
 
@@ -756,9 +784,13 @@ void SearchCourseByCode(HashTable *coursesTable);
 
 Graph *BuildCourseRelationGraph(DoubleLinkedList *coursesList);
 
-void IsRelative(Graph *courseGraph);
+void IsRelative(Graph *coursesGraph);
 
-void AllRelatives(Graph *courseGraph);
+void AllRelatives(Graph *coursesGraph);
+
+Graph *BuildStudentRelationGraph(DoubleLinkedList *studentsList);
+
+void Compare(Graph *studentsGraph);
 
 
 void AddStudent(DoubleLinkedList *studentsList, BinaryTreeNode **studentsTree, HashTable *studentsTable) {
@@ -1006,16 +1038,16 @@ Graph *BuildCourseRelationGraph(DoubleLinkedList *coursesList) {
     return courseRelationGraph;
 }
 
-void IsRelative(Graph *courseGraph) {
+void IsRelative(Graph *coursesGraph) {
     int courseCode1;
     scanf("%d", &courseCode1);
 
     int courseCode2;
     scanf("%d", &courseCode2);
 
-    GraphNode *course1Node = (GraphNode *) SearchList(courseGraph->nodes, (int (*)(void *, int)) equalsGraphNodeCourse,
+    GraphNode *course1Node = (GraphNode *) SearchList(coursesGraph->nodes, (int (*)(void *, int)) equalsGraphNodeCourse,
                                                       courseCode1)->content;
-    GraphNode *course2Node = (GraphNode *) SearchList(courseGraph->nodes, (int (*)(void *, int)) equalsGraphNodeCourse,
+    GraphNode *course2Node = (GraphNode *) SearchList(coursesGraph->nodes, (int (*)(void *, int)) equalsGraphNodeCourse,
                                                       courseCode2)->content;
 
     DoubleLinkedList *visited = NewDoubleLinkedList();
@@ -1028,11 +1060,11 @@ void IsRelative(Graph *courseGraph) {
     WhitenNodes(visited);
 }
 
-void AllRelatives(Graph *courseGraph) {
+void AllRelatives(Graph *coursesGraph) {
     int courseCode;
     scanf("%d", &courseCode);
 
-    GraphNode *courseNode = (GraphNode *) SearchList(courseGraph->nodes, (int (*)(void *, int)) equalsGraphNodeCourse,
+    GraphNode *courseNode = (GraphNode *) SearchList(coursesGraph->nodes, (int (*)(void *, int)) equalsGraphNodeCourse,
                                                      courseCode)->content;
 
     DoubleLinkedList *allRelatives = GetAllDescendants(courseNode, (int (*)(void *, void *)) compareGraphNodeCourse);
@@ -1044,6 +1076,62 @@ void AllRelatives(Graph *courseGraph) {
             printf("%d ", ((Course *) ((GraphNode *) element->content)->content)->code);
     }
     printf("\n");
+}
+
+Graph *BuildStudentRelationGraph(DoubleLinkedList *studentsList) {
+    Graph *studentsRelationGraph = NewGraph();
+
+    for_each(studentElement, studentsList) {
+        GraphNode *studentNode = NewGraphNode(studentElement->content);
+        InsertToList(studentsRelationGraph->nodes, studentNode);
+    }
+
+    for_each(studentNodeElement, studentsRelationGraph->nodes) {
+        Student *student1 = (Student *) ((GraphNode *) studentNodeElement->content)->content;
+        for_each(otherStudentNodeElement, studentsRelationGraph->nodes) {
+            Student *student2 = (Student *) ((GraphNode *) otherStudentNodeElement->content)->content;
+
+            if (student1->number != student2->number && IsStudentBetter(student1, student2))
+                InsertToList(((GraphNode *) studentNodeElement->content)->children, otherStudentNodeElement->content);
+        }
+    }
+
+    return studentsRelationGraph;
+}
+
+void Compare(Graph *studentsGraph) {
+    int studentNumber1;
+    scanf("%d", &studentNumber1);
+
+    int studentNumber2;
+    scanf("%d", &studentNumber2);
+
+    GraphNode *student1Node = (GraphNode *) SearchList(studentsGraph->nodes,
+                                                       (int (*)(void *, int)) equalsGraphNodeStudent,
+                                                       studentNumber1)->content;
+    GraphNode *student2Node = (GraphNode *) SearchList(studentsGraph->nodes,
+                                                       (int (*)(void *, int)) equalsGraphNodeStudent,
+                                                       studentNumber2)->content;
+
+    DoubleLinkedList *visited1 = NewDoubleLinkedList();
+    int isStudent1Better = IsDescendant(student1Node, student2Node, visited1, (int (*)(void *, void *)) compareStudent);
+    WhitenNodes(visited1);
+
+    DoubleLinkedList *visited2 = NewDoubleLinkedList();
+    int isStudent2Better = IsDescendant(student2Node, student1Node, visited2, (int (*)(void *, void *)) compareStudent);
+    WhitenNodes(visited2);
+
+    if (isStudent1Better) {
+        if (isStudent2Better)
+            printf("?\n");
+        else
+            printf(">\n");
+    } else {
+        if (isStudent2Better)
+            printf("<\n");
+        else
+            printf("?\n");
+    }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -1079,6 +1167,7 @@ int main() {
     HashTable *studentsTable = NewHashTable(4, a, b, prime, (float) 0.25);
     HashTable *coursesTable = NewHashTable(4, a, b, prime, (float) 0.25);
     Graph *courseRelationGraph = NULL;
+    Graph *StudentRelationGraph = NULL;
 
     char command[20];
     for (int i = 0; i < numberOfCommands; i++) {
@@ -1121,6 +1210,10 @@ int main() {
             if (courseRelationGraph == NULL)
                 courseRelationGraph = BuildCourseRelationGraph(coursesList);
             AllRelatives(courseRelationGraph);
+        } else if (strcmp("COMPARE", command) == 0) {
+            if (StudentRelationGraph == NULL)
+                StudentRelationGraph = BuildStudentRelationGraph(coursesList);
+            Compare(StudentRelationGraph);
         } else {
             break;
         }
