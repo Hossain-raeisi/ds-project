@@ -104,6 +104,8 @@ ListElement *ListPopIndex(DoubleLinkedList *doubleLinkedList, int index) {
 void RemoveElement(DoubleLinkedList *doubleLinkedList, ListElement *listElement) {
     if (listElement->before != NULL) {
         ((ListElement *) listElement->before)->next = listElement->next;
+    } else {
+        doubleLinkedList->first = (ListElement *) listElement->next;
     }
 
     if (listElement->next != NULL) {
@@ -129,157 +131,157 @@ ListElement *findElement(DoubleLinkedList *doubleLinkedList, int (*equals)(void 
 
 typedef struct {
     void *content;
-    struct Node *left;
-    struct Node *right;
+    struct BinaryTreeNode *left;
+    struct BinaryTreeNode *right;
     int height;
-} Node;
+} BinaryTreeNode;
 
-Node *NewNode(void *content);
+BinaryTreeNode *NewNode(void *content);
 
-int getNodeHeight(Node *node);
+int getNodeHeight(BinaryTreeNode *node);
 
-Node *LeftRotate(Node *root);
+BinaryTreeNode *LeftRotate(BinaryTreeNode *root);
 
-Node *RightRotate(Node *root);
+BinaryTreeNode *RightRotate(BinaryTreeNode *root);
 
-Node *InsertToTree(Node *root, void *content, int (*compare)(void *, void *));
+BinaryTreeNode *InsertToTree(BinaryTreeNode *root, void *content, int (*compare)(void *, void *));
 
-Node *rotate(Node *root, int (*compare)(void *, void *));
+BinaryTreeNode *rotate(BinaryTreeNode *root, int (*compare)(void *, void *));
 
-Node *SearchTree(Node *root, char name[], int (*compareByName)(void *, char[]));
+BinaryTreeNode *SearchTree(BinaryTreeNode *root, char name[], int (*compareByName)(void *, char[]));
 
-Node *TreePop(Node *root, void *content, int (*compare)(void *, void *));
+BinaryTreeNode *TreePop(BinaryTreeNode *root, void *content, int (*compare)(void *, void *));
 
-Node *getRightMostNode(Node *root);
+BinaryTreeNode *getRightMostNode(BinaryTreeNode *root);
 
-Node *getLeftMostNode(Node *root);
+BinaryTreeNode *getLeftMostNode(BinaryTreeNode *root);
 
 
-Node *NewNode(void *content) {
-    Node *node = (Node *) malloc(sizeof(Node));
+BinaryTreeNode *NewNode(void *content) {
+    BinaryTreeNode *node = (BinaryTreeNode *) malloc(sizeof(BinaryTreeNode));
     node->content = content;
     node->height = 1;
     return node;
 }
 
-int getNodeHeight(Node *node) {
+int getNodeHeight(BinaryTreeNode *node) {
     if (node != NULL)
         return node->height;
     return 0;
 }
 
-Node *LeftRotate(Node *root) {
-    Node *leftNode = (Node *) root->left;
-    Node *rightLeftNode = NULL;
+BinaryTreeNode *LeftRotate(BinaryTreeNode *root) {
+    BinaryTreeNode *leftNode = (BinaryTreeNode *) root->left;
+    BinaryTreeNode *rightLeftNode = NULL;
     if (leftNode != NULL)
-        rightLeftNode = (Node *) leftNode->right;
+        rightLeftNode = (BinaryTreeNode *) leftNode->right;
 
-    leftNode->right = (struct Node *) root;
-    root->left = (struct Node *) rightLeftNode;
+    leftNode->right = (struct BinaryTreeNode *) root;
+    root->left = (struct BinaryTreeNode *) rightLeftNode;
 
-    root->height = max(getNodeHeight((Node *) root->left), getNodeHeight((Node *) root->right) + 1);
-    leftNode->height = max(getNodeHeight((Node *) leftNode->left), getNodeHeight((Node *) leftNode->right) + 1);
+    root->height = max(getNodeHeight((BinaryTreeNode *) root->left), getNodeHeight((BinaryTreeNode *) root->right) + 1);
+    leftNode->height = max(getNodeHeight((BinaryTreeNode *) leftNode->left), getNodeHeight((BinaryTreeNode *) leftNode->right) + 1);
 
     return leftNode;
 }
 
-Node *RightRotate(Node *root) {
-    Node *rightNode = (Node *) root->right;
-    Node *leftRightNode = NULL;
+BinaryTreeNode *RightRotate(BinaryTreeNode *root) {
+    BinaryTreeNode *rightNode = (BinaryTreeNode *) root->right;
+    BinaryTreeNode *leftRightNode = NULL;
     if (rightNode != NULL)
-        leftRightNode = (Node *) rightNode->left;
+        leftRightNode = (BinaryTreeNode *) rightNode->left;
 
-    rightNode->left = (struct Node *) root;
-    root->right = (struct Node *) leftRightNode;
+    rightNode->left = (struct BinaryTreeNode *) root;
+    root->right = (struct BinaryTreeNode *) leftRightNode;
 
-    root->height = max(getNodeHeight((Node *) root->right), getNodeHeight((Node *) root->left) + 1);
-    rightNode->height = max(getNodeHeight((Node *) rightNode->right), getNodeHeight((Node *) rightNode->left) + 1);
+    root->height = max(getNodeHeight((BinaryTreeNode *) root->right), getNodeHeight((BinaryTreeNode *) root->left) + 1);
+    rightNode->height = max(getNodeHeight((BinaryTreeNode *) rightNode->right), getNodeHeight((BinaryTreeNode *) rightNode->left) + 1);
 
     return rightNode;
 }
 
-Node *InsertToTree(Node *root, void *content, int (*compare)(void *, void *)) {
+BinaryTreeNode *InsertToTree(BinaryTreeNode *root, void *content, int (*compare)(void *, void *)) {
     if (root == NULL)
         return (NewNode(content));
 
     if (compare(root->content, content) == 1)
-        root->left = (struct Node *) InsertToTree((Node *) root->left, content, compare);
+        root->left = (struct BinaryTreeNode *) InsertToTree((BinaryTreeNode *) root->left, content, compare);
     else
-        root->right = (struct Node *) InsertToTree((Node *) root->right, content, compare);
+        root->right = (struct BinaryTreeNode *) InsertToTree((BinaryTreeNode *) root->right, content, compare);
 
-    root->height = max(getNodeHeight((Node *) root->right), getNodeHeight((Node *) root->left)) + 1;
+    root->height = max(getNodeHeight((BinaryTreeNode *) root->right), getNodeHeight((BinaryTreeNode *) root->left)) + 1;
 
     return rotate(root, compare);
 }
 
-Node *rotate(Node *root, int (*compare)(void *, void *)) {
-    int heightDifference = getNodeHeight((Node *) root->left) - getNodeHeight((Node *) root->right);
+BinaryTreeNode *rotate(BinaryTreeNode *root, int (*compare)(void *, void *)) {
+    int heightDifference = getNodeHeight((BinaryTreeNode *) root->left) - getNodeHeight((BinaryTreeNode *) root->right);
 
     if (heightDifference < -1) {
-        if (getNodeHeight((Node *) ((Node *) root->right)->right) >
-            getNodeHeight((Node *) ((Node *) root->right)->left))
+        if (getNodeHeight((BinaryTreeNode *) ((BinaryTreeNode *) root->right)->right) >
+            getNodeHeight((BinaryTreeNode *) ((BinaryTreeNode *) root->right)->left))
             return RightRotate(root);
-        root->right = (struct Node *) LeftRotate((Node *) root->right);
+        root->right = (struct BinaryTreeNode *) LeftRotate((BinaryTreeNode *) root->right);
         return RightRotate(root);
     } else if (heightDifference > 1) {
-        if (getNodeHeight((Node *) ((Node *) root->left)->left) > getNodeHeight((Node *) ((Node *) root->left)->right))
+        if (getNodeHeight((BinaryTreeNode *) ((BinaryTreeNode *) root->left)->left) > getNodeHeight((BinaryTreeNode *) ((BinaryTreeNode *) root->left)->right))
             return LeftRotate(root);
-        root->left = (struct Node *) RightRotate((Node *) root->left);
+        root->left = (struct BinaryTreeNode *) RightRotate((BinaryTreeNode *) root->left);
         return LeftRotate(root);
     }
 
     return root;
 }
 
-Node *SearchTree(Node *root, char name[], int (*compareByName)(void *, char[])) {
+BinaryTreeNode *SearchTree(BinaryTreeNode *root, char name[], int (*compareByName)(void *, char[])) {
     if (compareByName(root->content, name) == 0)
         return root;
 
     if (compareByName(root->content, name) == 1)
-        return SearchTree((Node *) root->left, name, compareByName);
+        return SearchTree((BinaryTreeNode *) root->left, name, compareByName);
 
-    return SearchTree((Node *) root->right, name, compareByName);
+    return SearchTree((BinaryTreeNode *) root->right, name, compareByName);
 }
 
-Node *TreePop(Node *root, void *content, int (*compare)(void *, void *)) {
+BinaryTreeNode *TreePop(BinaryTreeNode *root, void *content, int (*compare)(void *, void *)) {
     if (compare(root->content, content) == 0) {
         if (root->right != NULL) {
-            Node *newRoot = getLeftMostNode((Node *) root->right);
+            BinaryTreeNode *newRoot = getLeftMostNode((BinaryTreeNode *) root->right);
             root->content = newRoot->content;
-            TreePop((Node *) root->right, newRoot->content, compare);
+            root->right = (struct BinaryTreeNode *) TreePop((BinaryTreeNode *) root->right, newRoot->content, compare);
         } else if (root->left != NULL) {
-            Node *newRoot = getRightMostNode((Node *) root->left);
+            BinaryTreeNode *newRoot = getRightMostNode((BinaryTreeNode *) root->left);
             root->content = newRoot->content;
-            TreePop((Node *) root->left, newRoot->content, compare);
+            root->left = (struct BinaryTreeNode *) TreePop((BinaryTreeNode *) root->left, newRoot->content, compare);
         } else {
             root = NULL;
         }
     } else if (compare(root->content, content) == 1) {
-        Node *leftNode = TreePop((Node *) root->left, content, compare);
-        root->left = (struct Node *) leftNode;
+        BinaryTreeNode *leftNode = TreePop((BinaryTreeNode *) root->left, content, compare);
+        root->left = (struct BinaryTreeNode *) leftNode;
     } else {
-        Node *rightNode = TreePop((Node *) root->right, content, compare);
-        root->right = (struct Node *) rightNode;
+        BinaryTreeNode *rightNode = TreePop((BinaryTreeNode *) root->right, content, compare);
+        root->right = (struct BinaryTreeNode *) rightNode;
     }
 
     if (root != NULL) {
-        root->height = max(getNodeHeight((Node *) root->left), getNodeHeight((Node *) root->right) + 1);
+        root->height = max(getNodeHeight((BinaryTreeNode *) root->left), getNodeHeight((BinaryTreeNode *) root->right) + 1);
         rotate(root, compare);
     }
 
     return root;
 }
 
-Node *getRightMostNode(Node *root) {
+BinaryTreeNode *getRightMostNode(BinaryTreeNode *root) {
     if (root->right == NULL)
         return root;
-    return getRightMostNode((Node *) root->right);
+    return getRightMostNode((BinaryTreeNode *) root->right);
 }
 
-Node *getLeftMostNode(Node *root) {
+BinaryTreeNode *getLeftMostNode(BinaryTreeNode *root) {
     if (root->left == NULL)
         return root;
-    return getLeftMostNode((Node *) root->left);
+    return getLeftMostNode((BinaryTreeNode *) root->left);
 }
 
 // HASH TABLE ----------------------------------------------------------------------------------------------------------
@@ -392,6 +394,8 @@ int compareStudent(Student *student1, Student *student2);
 
 int compareStudentAndName(Student *student, char name[]);
 
+int compareStudentByName(Student *student1, Student *student2);
+
 void PrintStudent(Student *student);
 
 typedef struct {
@@ -407,6 +411,8 @@ int equalsCourse(Course *course, int code);
 int compareCourse(Course *course1, Course *course2);
 
 int compareCourseAndName(Course *course, char name[]);
+
+int compareCourseByName(Course *course1, Course *course2);
 
 void PrintCourse(Course *course);
 
@@ -460,6 +466,10 @@ int compareStudentAndName(Student *student, char name[]) {
     }
 }
 
+int compareStudentByName(Student *student1, Student *student2) {
+    return compareStudentAndName(student1, student2->name);
+}
+
 void PrintStudent(Student *student) {
     printf("%d %s %d\n", student->number, student->name, student->grades->size);
     for_each(element, student->grades) {
@@ -502,6 +512,10 @@ int compareCourseAndName(Course *course, char name[]) {
     }
 }
 
+int compareCourseByName(Course *course1, Course *course2) {
+    return compareCourseAndName(course1, course2->name);
+}
+
 void PrintCourse(Course *course) {
     printf("%d %s %d\n", course->code, course->name, course->students->size);
     for_each(element, course->students) {
@@ -541,26 +555,25 @@ int hashCourse(HashTable *hashTable, void *content) {
 
 // COMMANDS ------------------------------------------------------------------------------------------------------------
 
-void AddStudent(DoubleLinkedList *studentsList, Node **studentsTree, HashTable *studentsTable);
+void AddStudent(DoubleLinkedList *studentsList, BinaryTreeNode **studentsTree, HashTable *studentsTable);
 
-void AddCourse(DoubleLinkedList *coursesList, Node **coursesTree, HashTable *coursesTable);
+void AddCourse(DoubleLinkedList *coursesList, BinaryTreeNode **coursesTree, HashTable *coursesTable);
 
 void AddGrade(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList);
 
-void EditStudent(DoubleLinkedList *studentsList);
+void EditStudent(DoubleLinkedList *studentsList, BinaryTreeNode **studentsTree);
 
-void EditCourse(DoubleLinkedList *coursesList);
+void EditCourse(DoubleLinkedList *coursesList, BinaryTreeNode **coursesTree);
 
 void EditGrade(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList);
 
-void DeleteStudent(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList, Node **studentsTree,
+void DeleteStudent(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList, BinaryTreeNode **studentsTree,
                    HashTable *studentsTable);
 
 void deleteStudentFromCourses(DoubleLinkedList *coursesList, Student *studentList);
 
-void
-DeleteCourse(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList, Node **coursesTree,
-             HashTable *coursesTable);
+void DeleteCourse(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList, BinaryTreeNode **coursesTree,
+                  HashTable *coursesTable);
 
 void deleteCourseFromStudentGrades(DoubleLinkedList *studentsList, Course *courseList);
 
@@ -572,38 +585,38 @@ void NumberOfStudentsOfCourse(DoubleLinkedList *coursesList);
 
 Grade *findGrade(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList, int studentNumber, int courseCode);
 
-void SearchStudentByName(Node *studentsTree);
+void SearchStudentByName(BinaryTreeNode *studentsTree);
 
-void SearchCourseByName(Node *coursesTree);
+void SearchCourseByName(BinaryTreeNode *coursesTree);
 
 void SearchStudentByNumber(HashTable *studentsTable);
 
 void SearchCourseByCode(HashTable *coursesTable);
 
 
-void AddStudent(DoubleLinkedList *studentsList, Node **studentsTree, HashTable *studentsTable) {
+void AddStudent(DoubleLinkedList *studentsList, BinaryTreeNode **studentsTree, HashTable *studentsTable) {
     int studentNumber;
-    char name[50];
+    char name[50] = "";
 
     scanf("%d", &studentNumber);
     scanf("%s", name);
 
     Student *student = NewStudent(studentNumber, name);
     InsertToList(studentsList, student);
-    *studentsTree = InsertToTree(*studentsTree, student, (int (*)(void *, void *)) compareStudent);
+    *studentsTree = InsertToTree(*studentsTree, student, (int (*)(void *, void *)) compareStudentByName);
     InsertToHashTable(&studentsTable, student, hashStudent);
 }
 
-void AddCourse(DoubleLinkedList *coursesList, Node **coursesTree, HashTable *coursesTable) {
+void AddCourse(DoubleLinkedList *coursesList, BinaryTreeNode **coursesTree, HashTable *coursesTable) {
     int code;
-    char name[10];
+    char name[10] = "";
 
     scanf("%d", &code);
     scanf("%s", name);
 
     Course *course = NewCourse(code, name);
     InsertToList(coursesList, course);
-    *coursesTree = InsertToTree(*coursesTree, course, (int (*)(void *, void *)) compareCourse);
+    *coursesTree = InsertToTree(*coursesTree, course, (int (*)(void *, void *)) compareCourseByName);
     InsertToHashTable(&coursesTable, course, hashCourse);
 }
 
@@ -628,29 +641,34 @@ void AddGrade(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList) {
     InsertToList(course->students, student);
 }
 
-void EditStudent(DoubleLinkedList *studentsList) {
+void EditStudent(DoubleLinkedList *studentsList, BinaryTreeNode **studentsTree) {
     int studentNumber;
-    char name[50];
+    char name[50] = "";
 
     scanf("%d", &studentNumber);
     scanf("%s", name);
 
     Student *student = (Student *) findElement(studentsList, (int (*)(void *, int)) equalsStudent,
                                                studentNumber)->content;
-
+    *studentsTree = TreePop(*studentsTree, student, (int (*)(void *, void *)) compareStudentByName);
+    memset(student->name, 0, sizeof student->name);
     strcpy(student->name, name);
+    *studentsTree = InsertToTree(*studentsTree, student, (int (*)(void *, void *)) compareStudentByName);
 }
 
-void EditCourse(DoubleLinkedList *coursesList) {
+void EditCourse(DoubleLinkedList *coursesList, BinaryTreeNode **coursesTree) {
     int code;
-    char name[10];
+    char name[10] = "";
 
     scanf("%d", &code);
     scanf("%s", name);
 
     Course *course = (Course *) findElement(coursesList, (int (*)(void *, int)) equalsCourse, code)->content;
 
+    *coursesTree = TreePop(*coursesTree, course, (int (*)(void *, void *)) compareCourseByName);
+    memset(course->name, 0, sizeof course->name);
     strcpy(course->name, name);
+    *coursesTree = InsertToTree(*coursesTree, course, (int (*)(void *, void *)) compareCourseByName);
 }
 
 void EditGrade(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList) {
@@ -667,7 +685,7 @@ void EditGrade(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList) {
     grade->score = score;
 }
 
-void DeleteStudent(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList, Node **studentsTree,
+void DeleteStudent(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList, BinaryTreeNode **studentsTree,
                    HashTable *studentsTable) {
     int studentNumber;
     scanf("%d", &studentNumber);
@@ -676,7 +694,7 @@ void DeleteStudent(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList
                                                               studentNumber);
 
     RemoveElement(studentsList, studentElement);
-    *studentsTree = TreePop(*studentsTree, studentElement->content, (int (*)(void *, void *)) compareStudent);
+    *studentsTree = TreePop(*studentsTree, studentElement->content, (int (*)(void *, void *)) compareStudentByName);
     HashTablePop(&studentsTable, (int (*)(void *, int)) equalsStudent, studentNumber, hashStudent);
     deleteStudentFromCourses(coursesList, studentElement->content);
 }
@@ -692,7 +710,7 @@ void deleteStudentFromCourses(DoubleLinkedList *coursesList, Student *studentLis
     }
 }
 
-void DeleteCourse(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList, Node **coursesTree,
+void DeleteCourse(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList, BinaryTreeNode **coursesTree,
                   HashTable *coursesTable) {
     int courseCode;
     scanf("%d", &courseCode);
@@ -701,7 +719,7 @@ void DeleteCourse(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList,
                                                              courseCode);
 
     RemoveElement(coursesList, courseElement);
-    *coursesTree = TreePop(*coursesTree, courseElement->content, (int (*)(void *, void *)) compareCourse);
+    *coursesTree = TreePop(*coursesTree, courseElement->content, (int (*)(void *, void *)) compareCourseByName);
     HashTablePop(&coursesTable, (int (*)(void *, int)) equalsCourse, courseCode, hashCourse);
     deleteCourseFromStudentGrades(studentsList, courseElement->content);
 }
@@ -765,8 +783,8 @@ Grade *findGrade(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList, 
     return grade;
 }
 
-void SearchStudentByName(Node *studentsTree) {
-    char name[50];
+void SearchStudentByName(BinaryTreeNode *studentsTree) {
+    char name[50] = "";
     scanf("%s", name);
 
     Student *student = (Student *) SearchTree(studentsTree, name,
@@ -774,11 +792,11 @@ void SearchStudentByName(Node *studentsTree) {
     PrintStudent(student);
 }
 
-void SearchCourseByName(Node *coursesTree) {
-    char name[10];
+void SearchCourseByName(BinaryTreeNode *coursesTree) {
+    char name[10] = "";
     scanf("%s", name);
 
-    Course *course = (Course *) SearchTree(coursesTree, name, (int (*)(void *, char *)) compareCourseAndName);
+    Course *course = (Course *) SearchTree(coursesTree, name, (int (*)(void *, char *)) compareCourseAndName)->content;
     PrintCourse(course);
 }
 
@@ -787,6 +805,7 @@ void SearchStudentByNumber(HashTable *studentsTable) {
     scanf("%d", &studentNumber);
 
     Student *student = (Student *) SearchHashTable(studentsTable, (int (*)(void *, int)) equalsStudent, studentNumber);
+    printf("%d\n", hash(studentsTable, studentNumber));
     PrintStudent(student);
 }
 
@@ -795,21 +814,29 @@ void SearchCourseByCode(HashTable *coursesTable) {
     scanf("%d", &courseCode);
 
     Course *course = (Course *) SearchHashTable(coursesTable, (int (*)(void *, int)) equalsCourse, courseCode);
+    printf("%d\n", hash(coursesTable, courseCode));
     PrintCourse(course);
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 int main() {
+
+    int numberOfCommands, a, b, prime;
+    scanf("%d", &numberOfCommands);
+    scanf("%d", &a);
+    scanf("%d", &b);
+    scanf("%d", &prime);
+
     DoubleLinkedList *studentsList = NewDoubleLinkedList();
     DoubleLinkedList *coursesList = NewDoubleLinkedList();
-    Node *studentsTree = NULL;
-    Node *coursesTree = NULL;
-    HashTable *studentsTable = NewHashTable(4, 3, 8, 7, (float) 0.5);
-    HashTable *coursesTable = NewHashTable(4, 3, 8, 7, (float) 0.5);
+    BinaryTreeNode *studentsTree = NULL;
+    BinaryTreeNode *coursesTree = NULL;
+    HashTable *studentsTable = NewHashTable(4, a, b, prime, (float) 0.25);
+    HashTable *coursesTable = NewHashTable(4, a, b, prime, (float) 0.25);
 
     char command[20];
-    while (1) {
+    for (int i = 0; i < numberOfCommands; i++) {
         scanf("%s", command);
         if (strcmp("ADDS", command) == 0) {
             AddStudent(studentsList, &studentsTree, studentsTable);
@@ -818,9 +845,9 @@ int main() {
         } else if (strcmp("ADDG", command) == 0) {
             AddGrade(studentsList, coursesList);
         } else if (strcmp("EDITS", command) == 0) {
-            EditStudent(studentsList);
+            EditStudent(studentsList, &studentsTree);
         } else if (strcmp("EDITC", command) == 0) {
-            EditCourse(coursesList);
+            EditCourse(coursesList, &coursesTree);
         } else if (strcmp("EDITG", command) == 0) {
             EditGrade(studentsList, coursesList);
         } else if (strcmp("DELETES", command) == 0) {
