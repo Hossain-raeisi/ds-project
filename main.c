@@ -325,8 +325,8 @@ BinaryTreeNode *TreePop(BinaryTreeNode *root, void *content, int (*compare)(void
 
     if (root != NULL) {
         root->height = max(getNodeHeight((BinaryTreeNode *) root->left),
-                           getNodeHeight((BinaryTreeNode *) root->right) + 1);
-        rotate(root, compare);
+                           getNodeHeight((BinaryTreeNode *) root->right)) + 1;
+        root = rotate(root, compare);
     }
 
     return root;
@@ -357,11 +357,12 @@ typedef struct {
 
 HashTable *NewHashTable(int size, int a, int b, int prime, float fillFactor);
 
-void InsertToHashTable(HashTable **hashTable, void *content, int (*hash)(HashTable *, void *));
+HashTable *InsertToHashTable(HashTable *hashTable, void *content, int (*hash)(HashTable *, void *));
 
 void *SearchHashTable(HashTable *hashTable, int (*equals)(void *, int), int id);
 
-void HashTablePop(HashTable **hashTable, int (*equals)(void *, int), int id, int (*hashContent)(HashTable *, void *));
+HashTable *
+HashTablePop(HashTable *hashTable, int (*equals)(void *, int), int id, int (*hashContent)(HashTable *, void *));
 
 HashTable *doubleHashTableSize(HashTable *hashTable, int (*hash)(HashTable *, void *));
 
@@ -385,14 +386,16 @@ HashTable *NewHashTable(int size, int a, int b, int prime, float fillFactor) {
     return hashTable;
 }
 
-void InsertToHashTable(HashTable **hashTable, void *content, int (*hash)(HashTable *, void *)) {
-    int hashResult = hash(*hashTable, content);
-    InsertToList((*hashTable)->buckets[hashResult], content);
-    (*hashTable)->filled += 1;
-
-    if ((*hashTable)->filled >= (*hashTable)->size) {
-        *hashTable = doubleHashTableSize(*hashTable, hash);
+HashTable *InsertToHashTable(HashTable *hashTable, void *content, int (*hash)(HashTable *, void *)) {
+    if (hashTable->filled >= hashTable->size) {
+        hashTable = doubleHashTableSize(hashTable, hash);
     }
+
+    int hashResult = hash(hashTable, content);
+    InsertToList(hashTable->buckets[hashResult], content);
+    hashTable->filled += 1;
+
+    return hashTable;
 }
 
 void *SearchHashTable(HashTable *hashTable, int (*equals)(void *, int), int id) {
@@ -401,15 +404,18 @@ void *SearchHashTable(HashTable *hashTable, int (*equals)(void *, int), int id) 
     return listElement->content;
 }
 
-void HashTablePop(HashTable **hashTable, int (*equals)(void *, int), int id, int (*hashContent)(HashTable *, void *)) {
-    int hashResult = hash(*hashTable, id);
-    ListElement *listElement = SearchList((*hashTable)->buckets[hashResult], equals, id);
-    RemoveElement((*hashTable)->buckets[hashResult], listElement);
-    (*hashTable)->filled -= 1;
-
-    if ((*hashTable)->filled <= (*hashTable)->size * (*hashTable)->fillFactor) {
-        *hashTable = halfHashTableSize(*hashTable, hashContent);
+HashTable *
+HashTablePop(HashTable *hashTable, int (*equals)(void *, int), int id, int (*hashContent)(HashTable *, void *)) {
+    if (hashTable->filled <= hashTable->size * hashTable->fillFactor) {
+        hashTable = halfHashTableSize(hashTable, hashContent);
     }
+
+    int hashResult = hash(hashTable, id);
+    ListElement *listElement = SearchList(hashTable->buckets[hashResult], equals, id);
+    RemoveElement(hashTable->buckets[hashResult], listElement);
+    hashTable->filled -= 1;
+
+    return hashTable;
 }
 
 HashTable *doubleHashTableSize(HashTable *hashTable, int (*hash)(HashTable *, void *)) {
@@ -417,7 +423,7 @@ HashTable *doubleHashTableSize(HashTable *hashTable, int (*hash)(HashTable *, vo
                                            hashTable->fillFactor);
     for (int i = 0; i < hashTable->size; i++) {
         for_each(element, hashTable->buckets[i]) {
-            InsertToHashTable(&newHashTable, element->content, hash);
+            newHashTable = InsertToHashTable(newHashTable, element->content, hash);
         }
     }
     return newHashTable;
@@ -428,14 +434,14 @@ HashTable *halfHashTableSize(HashTable *hashTable, int (*hash)(HashTable *, void
                                            hashTable->fillFactor);
     for (int i = 0; i < hashTable->size; i++) {
         for_each(element, hashTable->buckets[i]) {
-            InsertToHashTable(&newHashTable, element->content, hash);
+            newHashTable = InsertToHashTable(newHashTable, element->content, hash);
         }
     }
     return newHashTable;
 }
 
 int hash(HashTable *hashTable, int id) {
-    return ((hashTable->a * id + hashTable->b) % hashTable->prime) % hashTable->size;
+    return (int )((((long)hashTable->a * (long)id + (long)hashTable->b) % hashTable->prime) % hashTable->size);
 }
 
 // GRAPH ---------------------------------------------------------------------------------------------------------------
@@ -631,7 +637,10 @@ void PrintStudent(Student *student) {
     printf("%d %s %d\n", student->number, student->name, student->grades->size);
     for_each(element, student->grades) {
         Grade *grade = (Grade *) element->content;
-        printf("%d %d %0.1f\n", grade->course->code, grade->term, grade->score);
+        if ((int) grade->score == grade->score)
+            printf("%d %d %d\n", grade->course->code, grade->term, (int )grade->score);
+        else
+            printf("%d %d %0.1f\n", grade->course->code, grade->term, grade->score);
     }
 }
 
@@ -681,7 +690,11 @@ void PrintCourse(Course *course) {
         Grade *grade = (Grade *) SearchList(student->grades, (int (*)(void *, int)) equalsGradeWithCourseCode,
                                             course->code)->content;
 
-        printf("%d %d %0.1f\n", student->number, grade->term, grade->score);
+
+        if ((int) grade->score == grade->score)
+            printf("%d %d %d\n", student->number, grade->term, (int )grade->score);
+        else
+            printf("%d %d %0.1f\n", student->number, grade->term, grade->score);
     }
 }
 
@@ -701,13 +714,11 @@ int equalsGradeWithCourseCode(Grade *grade, int courseCode) {
 }
 
 int hashStudent(HashTable *hashTable, void *content) {
-    int id = ((Student *) content)->number;
-    return ((hashTable->a * id + hashTable->b) % hashTable->prime) % hashTable->size;
+    return hash(hashTable, ((Student *) content)->number);
 }
 
 int hashCourse(HashTable *hashTable, void *content) {
-    int id = ((Course *) content)->code;
-    return ((hashTable->a * id + hashTable->b) % hashTable->prime) % hashTable->size;
+    return hash(hashTable, ((Course *) content)->code);
 }
 
 int AreDirectRelative(Course *course1, Course *course2) {
@@ -761,9 +772,9 @@ int equalsGraphNodeStudent(GraphNode *graphNode, int studentNumber) {
 // COMMANDS ------------------------------------------------------------------------------------------------------------
 
 void
-AddStudent(DoubleLinkedList *studentsList, BinaryTreeNode **studentsTree, HashTable *studentsTable, Context *context);
+AddStudent(DoubleLinkedList *studentsList, BinaryTreeNode **studentsTree, HashTable **studentsTable, Context *context);
 
-void AddCourse(DoubleLinkedList *coursesList, BinaryTreeNode **coursesTree, HashTable *coursesTable, Context *context);
+void AddCourse(DoubleLinkedList *coursesList, BinaryTreeNode **coursesTree, HashTable **coursesTable, Context *context);
 
 void AddGrade(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList, Context *context);
 
@@ -774,12 +785,12 @@ void EditCourse(DoubleLinkedList *coursesList, BinaryTreeNode **coursesTree, Con
 void EditGrade(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList, Context *context);
 
 void DeleteStudent(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList, BinaryTreeNode **studentsTree,
-                   HashTable *studentsTable, Context *context);
+                   HashTable **studentsTable, Context *context);
 
 void deleteStudentFromCourses(DoubleLinkedList *coursesList, Student *studentList, Context *context);
 
 void DeleteCourse(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList, BinaryTreeNode **coursesTree,
-                  HashTable *coursesTable, Context *context);
+                  HashTable **coursesTable, Context *context);
 
 void deleteCourseFromStudentGrades(DoubleLinkedList *studentsList, Course *courseList, Context *context);
 
@@ -811,7 +822,7 @@ void Compare(Graph *studentsGraph);
 
 
 void
-AddStudent(DoubleLinkedList *studentsList, BinaryTreeNode **studentsTree, HashTable *studentsTable, Context *context) {
+AddStudent(DoubleLinkedList *studentsList, BinaryTreeNode **studentsTree, HashTable **studentsTable, Context *context) {
     int studentNumber;
 
     scanf("%d", &studentNumber);
@@ -821,11 +832,12 @@ AddStudent(DoubleLinkedList *studentsList, BinaryTreeNode **studentsTree, HashTa
 
     if (context->phase2) {
         *studentsTree = InsertToTree(*studentsTree, student, (int (*)(void *, void *)) compareStudentByName);
-        InsertToHashTable(&studentsTable, student, hashStudent);
+        *studentsTable = InsertToHashTable(*studentsTable, student, hashStudent);
     }
 }
 
-void AddCourse(DoubleLinkedList *coursesList, BinaryTreeNode **coursesTree, HashTable *coursesTable, Context *context) {
+void
+AddCourse(DoubleLinkedList *coursesList, BinaryTreeNode **coursesTree, HashTable **coursesTable, Context *context) {
     int code;
 
     scanf("%d", &code);
@@ -834,7 +846,7 @@ void AddCourse(DoubleLinkedList *coursesList, BinaryTreeNode **coursesTree, Hash
     InsertToList(coursesList, course);
     if (context->phase2) {
         *coursesTree = InsertToTree(*coursesTree, course, (int (*)(void *, void *)) compareCourseByName);
-        InsertToHashTable(&coursesTable, course, hashCourse);
+        *coursesTable = InsertToHashTable(*coursesTable, course, hashCourse);
     }
 
 }
@@ -911,7 +923,7 @@ void EditGrade(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList, Co
 }
 
 void DeleteStudent(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList, BinaryTreeNode **studentsTree,
-                   HashTable *studentsTable, Context *context) {
+                   HashTable **studentsTable, Context *context) {
     int studentNumber;
     scanf("%d", &studentNumber);
 
@@ -921,8 +933,7 @@ void DeleteStudent(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList
     RemoveElement(studentsList, studentElement);
     if (context->phase2) {
         *studentsTree = TreePop(*studentsTree, studentElement->content, (int (*)(void *, void *)) compareStudentByName);
-        HashTablePop(&studentsTable, (int (*)(void *, int)) equalsStudent, studentNumber, hashStudent);
-
+        *studentsTable = HashTablePop(*studentsTable, (int (*)(void *, int)) equalsStudent, studentNumber, hashStudent);
     }
     deleteStudentFromCourses(coursesList, studentElement->content, NULL);
 }
@@ -939,7 +950,7 @@ void deleteStudentFromCourses(DoubleLinkedList *coursesList, Student *studentLis
 }
 
 void DeleteCourse(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList, BinaryTreeNode **coursesTree,
-                  HashTable *coursesTable, Context *context) {
+                  HashTable **coursesTable, Context *context) {
     int courseCode;
     scanf("%d", &courseCode);
 
@@ -949,7 +960,7 @@ void DeleteCourse(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList,
     RemoveElement(coursesList, courseElement);
     if (context->phase2) {
         *coursesTree = TreePop(*coursesTree, courseElement->content, (int (*)(void *, void *)) compareCourseByName);
-        HashTablePop(&coursesTable, (int (*)(void *, int)) equalsCourse, courseCode, hashCourse);
+        *coursesTable = HashTablePop(*coursesTable, (int (*)(void *, int)) equalsCourse, courseCode, hashCourse);
     }
     deleteCourseFromStudentGrades(studentsList, courseElement->content, NULL);
 }
@@ -1101,7 +1112,6 @@ void AllRelatives(Graph *coursesGraph) {
     DoubleLinkedList *allRelatives = GetAllDescendants(courseNode, (int (*)(void *, void *)) compareGraphNodeCourse);
     WhitenNodes(allRelatives);
 
-    printf("%d ", allRelatives->size - 1);
     for_each(element, allRelatives) {
         if (((Course *) ((GraphNode *) element->content)->content)->code != courseCode)
             printf("%d ", ((Course *) ((GraphNode *) element->content)->content)->code);
@@ -1190,9 +1200,9 @@ int main() {
     for (int i = 0; i < numberOfCommands; i++) {
         scanf("%s", command);
         if (strcmp("ADDS", command) == 0) {
-            AddStudent(studentsList, &studentsTree, studentsTable, context);
+            AddStudent(studentsList, &studentsTree, &studentsTable, context);
         } else if (strcmp("ADDC", command) == 0) {
-            AddCourse(coursesList, &coursesTree, coursesTable, context);
+            AddCourse(coursesList, &coursesTree, &coursesTable, context);
         } else if (strcmp("ADDG", command) == 0) {
             AddGrade(studentsList, coursesList, context);
         } else if (strcmp("EDITS", command) == 0) {
@@ -1202,9 +1212,9 @@ int main() {
         } else if (strcmp("EDITG", command) == 0) {
             EditGrade(studentsList, coursesList, context);
         } else if (strcmp("DELETES", command) == 0) {
-            DeleteStudent(studentsList, coursesList, &studentsTree, studentsTable, context);
+            DeleteStudent(studentsList, coursesList, &studentsTree, &studentsTable, context);
         } else if (strcmp("DELETEC", command) == 0) {
-            DeleteCourse(studentsList, coursesList, &coursesTree, coursesTable, context);
+            DeleteCourse(studentsList, coursesList, &coursesTree, &coursesTable, context);
         } else if (strcmp("DELETEG", command) == 0) {
             DeleteGrade(studentsList, coursesList, context);
         } else if (strcmp("NUMBERC", command) == 0) {
