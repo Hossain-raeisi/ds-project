@@ -11,6 +11,20 @@ int max(int a, int b) {
     return (a > b) ? a : b;
 }
 
+typedef struct {
+    int phase2;
+} Context;
+
+Context *NewContext(int phase2);
+
+Context *NewContext(int phase2) {
+    Context *context = (Context *) malloc(sizeof(Context));
+
+    context->phase2 = phase2;
+
+    return context;
+}
+
 // DOUBLE LINKED LIST --------------------------------------------------------------------------------------------------
 
 typedef struct {
@@ -744,29 +758,30 @@ int equalsGraphNodeStudent(GraphNode *graphNode, int studentNumber) {
 
 // COMMANDS ------------------------------------------------------------------------------------------------------------
 
-void AddStudent(DoubleLinkedList *studentsList, BinaryTreeNode **studentsTree, HashTable *studentsTable);
+void
+AddStudent(DoubleLinkedList *studentsList, BinaryTreeNode **studentsTree, HashTable *studentsTable, Context *context);
 
-void AddCourse(DoubleLinkedList *coursesList, BinaryTreeNode **coursesTree, HashTable *coursesTable);
+void AddCourse(DoubleLinkedList *coursesList, BinaryTreeNode **coursesTree, HashTable *coursesTable, Context *context);
 
-void AddGrade(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList);
+void AddGrade(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList, Context *context);
 
-void EditStudent(DoubleLinkedList *studentsList, BinaryTreeNode **studentsTree);
+void EditStudent(DoubleLinkedList *studentsList, BinaryTreeNode **studentsTree, Context *context);
 
-void EditCourse(DoubleLinkedList *coursesList, BinaryTreeNode **coursesTree);
+void EditCourse(DoubleLinkedList *coursesList, BinaryTreeNode **coursesTree, Context *context);
 
-void EditGrade(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList);
+void EditGrade(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList, Context *context);
 
 void DeleteStudent(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList, BinaryTreeNode **studentsTree,
-                   HashTable *studentsTable);
+                   HashTable *studentsTable, Context *context);
 
-void deleteStudentFromCourses(DoubleLinkedList *coursesList, Student *studentList);
+void deleteStudentFromCourses(DoubleLinkedList *coursesList, Student *studentList, Context *context);
 
 void DeleteCourse(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList, BinaryTreeNode **coursesTree,
-                  HashTable *coursesTable);
+                  HashTable *coursesTable, Context *context);
 
-void deleteCourseFromStudentGrades(DoubleLinkedList *studentsList, Course *courseList);
+void deleteCourseFromStudentGrades(DoubleLinkedList *studentsList, Course *courseList, Context *context);
 
-void DeleteGrade(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList);
+void DeleteGrade(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList, Context *context);
 
 void NumberOfCourses(DoubleLinkedList *studentsList);
 
@@ -793,7 +808,7 @@ Graph *BuildStudentRelationGraph(DoubleLinkedList *studentsList);
 void Compare(Graph *studentsGraph);
 
 
-void AddStudent(DoubleLinkedList *studentsList, BinaryTreeNode **studentsTree, HashTable *studentsTable) {
+void AddStudent(DoubleLinkedList *studentsList, BinaryTreeNode **studentsTree, HashTable *studentsTable, Context *context) {
     int studentNumber;
     char name[50] = "";
 
@@ -802,11 +817,14 @@ void AddStudent(DoubleLinkedList *studentsList, BinaryTreeNode **studentsTree, H
 
     Student *student = NewStudent(studentNumber, name);
     InsertToList(studentsList, student);
-    *studentsTree = InsertToTree(*studentsTree, student, (int (*)(void *, void *)) compareStudentByName);
-    InsertToHashTable(&studentsTable, student, hashStudent);
+
+    if (context->phase2) {
+        *studentsTree = InsertToTree(*studentsTree, student, (int (*)(void *, void *)) compareStudentByName);
+        InsertToHashTable(&studentsTable, student, hashStudent);
+    }
 }
 
-void AddCourse(DoubleLinkedList *coursesList, BinaryTreeNode **coursesTree, HashTable *coursesTable) {
+void AddCourse(DoubleLinkedList *coursesList, BinaryTreeNode **coursesTree, HashTable *coursesTable, Context *context) {
     int code;
     char name[10] = "";
 
@@ -815,11 +833,14 @@ void AddCourse(DoubleLinkedList *coursesList, BinaryTreeNode **coursesTree, Hash
 
     Course *course = NewCourse(code, name);
     InsertToList(coursesList, course);
-    *coursesTree = InsertToTree(*coursesTree, course, (int (*)(void *, void *)) compareCourseByName);
-    InsertToHashTable(&coursesTable, course, hashCourse);
+    if (context->phase2) {
+        *coursesTree = InsertToTree(*coursesTree, course, (int (*)(void *, void *)) compareCourseByName);
+        InsertToHashTable(&coursesTable, course, hashCourse);
+    }
+
 }
 
-void AddGrade(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList) {
+void AddGrade(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList, Context *context) {
     int studentNumber;
     int courseCode;
     int semesterCode;
@@ -840,7 +861,7 @@ void AddGrade(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList) {
     InsertToList(course->students, student);
 }
 
-void EditStudent(DoubleLinkedList *studentsList, BinaryTreeNode **studentsTree) {
+void EditStudent(DoubleLinkedList *studentsList, BinaryTreeNode **studentsTree, Context *context) {
     int studentNumber;
     char name[50] = "";
 
@@ -849,13 +870,17 @@ void EditStudent(DoubleLinkedList *studentsList, BinaryTreeNode **studentsTree) 
 
     Student *student = (Student *) SearchList(studentsList, (int (*)(void *, int)) equalsStudent,
                                               studentNumber)->content;
-    *studentsTree = TreePop(*studentsTree, student, (int (*)(void *, void *)) compareStudentByName);
+
+    if (context->phase2)
+        *studentsTree = TreePop(*studentsTree, student, (int (*)(void *, void *)) compareStudentByName);
     memset(student->name, 0, sizeof student->name);
     strcpy(student->name, name);
-    *studentsTree = InsertToTree(*studentsTree, student, (int (*)(void *, void *)) compareStudentByName);
+
+    if (context->phase2)
+        *studentsTree = InsertToTree(*studentsTree, student, (int (*)(void *, void *)) compareStudentByName);
 }
 
-void EditCourse(DoubleLinkedList *coursesList, BinaryTreeNode **coursesTree) {
+void EditCourse(DoubleLinkedList *coursesList, BinaryTreeNode **coursesTree, Context *context) {
     int code;
     char name[10] = "";
 
@@ -864,13 +889,17 @@ void EditCourse(DoubleLinkedList *coursesList, BinaryTreeNode **coursesTree) {
 
     Course *course = (Course *) SearchList(coursesList, (int (*)(void *, int)) equalsCourse, code)->content;
 
-    *coursesTree = TreePop(*coursesTree, course, (int (*)(void *, void *)) compareCourseByName);
+    if (context->phase2)
+        *coursesTree = TreePop(*coursesTree, course, (int (*)(void *, void *)) compareCourseByName);
+
     memset(course->name, 0, sizeof course->name);
     strcpy(course->name, name);
-    *coursesTree = InsertToTree(*coursesTree, course, (int (*)(void *, void *)) compareCourseByName);
+
+    if (context->phase2)
+        *coursesTree = InsertToTree(*coursesTree, course, (int (*)(void *, void *)) compareCourseByName);
 }
 
-void EditGrade(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList) {
+void EditGrade(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList, Context *context) {
     int studentNumber;
     int courseCode;
     float score;
@@ -885,7 +914,7 @@ void EditGrade(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList) {
 }
 
 void DeleteStudent(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList, BinaryTreeNode **studentsTree,
-                   HashTable *studentsTable) {
+                   HashTable *studentsTable, Context *context) {
     int studentNumber;
     scanf("%d", &studentNumber);
 
@@ -893,12 +922,13 @@ void DeleteStudent(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList
                                                              studentNumber);
 
     RemoveElement(studentsList, studentElement);
-    *studentsTree = TreePop(*studentsTree, studentElement->content, (int (*)(void *, void *)) compareStudentByName);
-    HashTablePop(&studentsTable, (int (*)(void *, int)) equalsStudent, studentNumber, hashStudent);
-    deleteStudentFromCourses(coursesList, studentElement->content);
+    if (context->phase2)
+        *studentsTree = TreePop(*studentsTree, studentElement->content, (int (*)(void *, void *)) compareStudentByName);
+        HashTablePop(&studentsTable, (int (*)(void *, int)) equalsStudent, studentNumber, hashStudent);
+    deleteStudentFromCourses(coursesList, studentElement->content, NULL);
 }
 
-void deleteStudentFromCourses(DoubleLinkedList *coursesList, Student *studentList) {
+void deleteStudentFromCourses(DoubleLinkedList *coursesList, Student *studentList, Context *context) {
     for_each(element, studentList->grades) {
         Course *course = ((Grade *) element->content)->course;
 
@@ -910,7 +940,7 @@ void deleteStudentFromCourses(DoubleLinkedList *coursesList, Student *studentLis
 }
 
 void DeleteCourse(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList, BinaryTreeNode **coursesTree,
-                  HashTable *coursesTable) {
+                  HashTable *coursesTable, Context *context) {
     int courseCode;
     scanf("%d", &courseCode);
 
@@ -918,12 +948,13 @@ void DeleteCourse(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList,
                                                             courseCode);
 
     RemoveElement(coursesList, courseElement);
-    *coursesTree = TreePop(*coursesTree, courseElement->content, (int (*)(void *, void *)) compareCourseByName);
-    HashTablePop(&coursesTable, (int (*)(void *, int)) equalsCourse, courseCode, hashCourse);
-    deleteCourseFromStudentGrades(studentsList, courseElement->content);
+    if (context->phase2)
+        *coursesTree = TreePop(*coursesTree, courseElement->content, (int (*)(void *, void *)) compareCourseByName);
+        HashTablePop(&coursesTable, (int (*)(void *, int)) equalsCourse, courseCode, hashCourse);
+    deleteCourseFromStudentGrades(studentsList, courseElement->content, NULL);
 }
 
-void deleteCourseFromStudentGrades(DoubleLinkedList *studentsList, Course *courseList) {
+void deleteCourseFromStudentGrades(DoubleLinkedList *studentsList, Course *courseList, Context *context) {
     for_each(element, courseList->students) {
         Student *student = (Student *) element->content;
         ListElement *gradeElement = (ListElement *) SearchList(student->grades,
@@ -933,7 +964,7 @@ void deleteCourseFromStudentGrades(DoubleLinkedList *studentsList, Course *cours
     }
 }
 
-void DeleteGrade(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList) {
+void DeleteGrade(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList, Context *context) {
     int studentNumber;
     int courseCode;
 
@@ -1136,20 +1167,6 @@ void Compare(Graph *studentsGraph) {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-typedef struct {
-    int phase2;
-} Context;
-
-Context *NewContext(int phase2);
-
-Context *NewContext(int phase2) {
-    Context *context = (Context *) malloc(sizeof(Context));
-
-    context->phase2 = phase2;
-
-    return context;
-}
-
 int main() {
 
     int numberOfCommands, a, b, prime;
@@ -1173,23 +1190,23 @@ int main() {
     for (int i = 0; i < numberOfCommands; i++) {
         scanf("%s", command);
         if (strcmp("ADDS", command) == 0) {
-            AddStudent(studentsList, &studentsTree, studentsTable);
+            AddStudent(studentsList, &studentsTree, studentsTable, context);
         } else if (strcmp("ADDC", command) == 0) {
-            AddCourse(coursesList, &coursesTree, coursesTable);
+            AddCourse(coursesList, &coursesTree, coursesTable, context);
         } else if (strcmp("ADDG", command) == 0) {
-            AddGrade(studentsList, coursesList);
+            AddGrade(studentsList, coursesList, context);
         } else if (strcmp("EDITS", command) == 0) {
-            EditStudent(studentsList, &studentsTree);
+            EditStudent(studentsList, &studentsTree, context);
         } else if (strcmp("EDITC", command) == 0) {
-            EditCourse(coursesList, &coursesTree);
+            EditCourse(coursesList, &coursesTree, context);
         } else if (strcmp("EDITG", command) == 0) {
-            EditGrade(studentsList, coursesList);
+            EditGrade(studentsList, coursesList, context);
         } else if (strcmp("DELETES", command) == 0) {
-            DeleteStudent(studentsList, coursesList, &studentsTree, studentsTable);
+            DeleteStudent(studentsList, coursesList, &studentsTree, studentsTable, context);
         } else if (strcmp("DELETEC", command) == 0) {
-            DeleteCourse(studentsList, coursesList, &coursesTree, coursesTable);
+            DeleteCourse(studentsList, coursesList, &coursesTree, coursesTable, context);
         } else if (strcmp("DELETEG", command) == 0) {
-            DeleteGrade(studentsList, coursesList);
+            DeleteGrade(studentsList, coursesList, context);
         } else if (strcmp("NUMBERC", command) == 0) {
             NumberOfCourses(studentsList);
         } else if (strcmp("NUMBERS", command) == 0) {
