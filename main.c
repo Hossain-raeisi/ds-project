@@ -128,6 +128,8 @@ void RemoveElement(DoubleLinkedList *doubleLinkedList, ListElement *listElement)
 
     if (listElement->next != NULL) {
         ((ListElement *) listElement->next)->before = listElement->before;
+    } else {
+        doubleLinkedList->last = (ListElement *) listElement->before;
     }
     doubleLinkedList->size -= 1;
 }
@@ -531,7 +533,7 @@ typedef struct {
     DoubleLinkedList *grades;
 } Student;
 
-Student *NewStudent(int number, char name[30]);
+Student *NewStudent(int number);
 
 int equalsStudent(Student *student, int studentNumber);
 
@@ -549,7 +551,7 @@ typedef struct {
     DoubleLinkedList *students;
 } Course;
 
-Course *NewCourse(int code, char name[10]);
+Course *NewCourse(int code);
 
 int equalsCourse(Course *course, int code);
 
@@ -587,11 +589,11 @@ int IsStudentBetter(Student *student1, Student *student2);
 int equalsGraphNodeStudent(GraphNode *graphNode, int studentNumber);
 
 
-Student *NewStudent(int number, char name[30]) {
+Student *NewStudent(int number) {
     Student *student = (Student *) malloc(sizeof(Student));
 
     student->number = number;
-    strcpy(student->name, name);
+    scanf("%s", student->name);
     student->grades = NewDoubleLinkedList();
 
     return student;
@@ -633,11 +635,11 @@ void PrintStudent(Student *student) {
     }
 }
 
-Course *NewCourse(int code, char name[10]) {
+Course *NewCourse(int code) {
     Course *course = (Course *) malloc(sizeof(Course));
 
     course->code = code;
-    strcpy(course->name, name);
+    scanf("%s", course->name);
     course->students = NewDoubleLinkedList();
 
     return course;
@@ -737,10 +739,11 @@ int IsStudentBetter(Student *student1, Student *student2) {
 
     for_each(element, student1->grades) {
         Grade *grade1 = (Grade *) element->content;
-        ListElement *grade2Element = SearchList(student2->grades, (int (*)(void *, int)) equalsGradeWithCourseCode,grade1->course->code);
+        ListElement *grade2Element = SearchList(student2->grades, (int (*)(void *, int)) equalsGradeWithCourseCode,
+                                                grade1->course->code);
         if (grade2Element != NULL) {
             commonCourses += 1;
-            if (grade1->score > ((Grade *)grade2Element->content)->score)
+            if (grade1->score > ((Grade *) grade2Element->content)->score)
                 student1BetterScores += 1;
         }
     }
@@ -807,14 +810,13 @@ Graph *BuildStudentRelationGraph(DoubleLinkedList *studentsList);
 void Compare(Graph *studentsGraph);
 
 
-void AddStudent(DoubleLinkedList *studentsList, BinaryTreeNode **studentsTree, HashTable *studentsTable, Context *context) {
+void
+AddStudent(DoubleLinkedList *studentsList, BinaryTreeNode **studentsTree, HashTable *studentsTable, Context *context) {
     int studentNumber;
-    char name[50] = "";
 
     scanf("%d", &studentNumber);
-    scanf("%s", name);
 
-    Student *student = NewStudent(studentNumber, name);
+    Student *student = NewStudent(studentNumber);
     InsertToList(studentsList, student);
 
     if (context->phase2) {
@@ -825,12 +827,10 @@ void AddStudent(DoubleLinkedList *studentsList, BinaryTreeNode **studentsTree, H
 
 void AddCourse(DoubleLinkedList *coursesList, BinaryTreeNode **coursesTree, HashTable *coursesTable, Context *context) {
     int code;
-    char name[10] = "";
 
     scanf("%d", &code);
-    scanf("%s", name);
 
-    Course *course = NewCourse(code, name);
+    Course *course = NewCourse(code);
     InsertToList(coursesList, course);
     if (context->phase2) {
         *coursesTree = InsertToTree(*coursesTree, course, (int (*)(void *, void *)) compareCourseByName);
@@ -865,7 +865,6 @@ void EditStudent(DoubleLinkedList *studentsList, BinaryTreeNode **studentsTree, 
     char name[50] = "";
 
     scanf("%d", &studentNumber);
-    scanf("%s", name);
 
     Student *student = (Student *) SearchList(studentsList, (int (*)(void *, int)) equalsStudent,
                                               studentNumber)->content;
@@ -873,7 +872,7 @@ void EditStudent(DoubleLinkedList *studentsList, BinaryTreeNode **studentsTree, 
     if (context->phase2)
         *studentsTree = TreePop(*studentsTree, student, (int (*)(void *, void *)) compareStudentByName);
     memset(student->name, 0, sizeof student->name);
-    strcpy(student->name, name);
+    scanf("%s", student->name);
 
     if (context->phase2)
         *studentsTree = InsertToTree(*studentsTree, student, (int (*)(void *, void *)) compareStudentByName);
@@ -884,7 +883,6 @@ void EditCourse(DoubleLinkedList *coursesList, BinaryTreeNode **coursesTree, Con
     char name[10] = "";
 
     scanf("%d", &code);
-    scanf("%s", name);
 
     Course *course = (Course *) SearchList(coursesList, (int (*)(void *, int)) equalsCourse, code)->content;
 
@@ -892,7 +890,7 @@ void EditCourse(DoubleLinkedList *coursesList, BinaryTreeNode **coursesTree, Con
         *coursesTree = TreePop(*coursesTree, course, (int (*)(void *, void *)) compareCourseByName);
 
     memset(course->name, 0, sizeof course->name);
-    strcpy(course->name, name);
+    scanf("%s", course->name);
 
     if (context->phase2)
         *coursesTree = InsertToTree(*coursesTree, course, (int (*)(void *, void *)) compareCourseByName);
@@ -921,9 +919,11 @@ void DeleteStudent(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList
                                                              studentNumber);
 
     RemoveElement(studentsList, studentElement);
-    if (context->phase2)
+    if (context->phase2) {
         *studentsTree = TreePop(*studentsTree, studentElement->content, (int (*)(void *, void *)) compareStudentByName);
         HashTablePop(&studentsTable, (int (*)(void *, int)) equalsStudent, studentNumber, hashStudent);
+
+    }
     deleteStudentFromCourses(coursesList, studentElement->content, NULL);
 }
 
@@ -947,9 +947,10 @@ void DeleteCourse(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList,
                                                             courseCode);
 
     RemoveElement(coursesList, courseElement);
-    if (context->phase2)
+    if (context->phase2) {
         *coursesTree = TreePop(*coursesTree, courseElement->content, (int (*)(void *, void *)) compareCourseByName);
         HashTablePop(&coursesTable, (int (*)(void *, int)) equalsCourse, courseCode, hashCourse);
+    }
     deleteCourseFromStudentGrades(studentsList, courseElement->content, NULL);
 }
 
@@ -1174,14 +1175,14 @@ int main() {
     scanf("%d", &b);
     scanf("%d", &prime);
 
-    Context *context = NewContext(prime == 1);
+    Context *context = NewContext(prime != 1);
 
     DoubleLinkedList *studentsList = NewDoubleLinkedList();
     DoubleLinkedList *coursesList = NewDoubleLinkedList();
     BinaryTreeNode *studentsTree = NULL;
     BinaryTreeNode *coursesTree = NULL;
-    HashTable *studentsTable = NewHashTable(4, a, b, prime, (float) 0.25);
-    HashTable *coursesTable = NewHashTable(4, a, b, prime, (float) 0.25);
+    HashTable *studentsTable = NewHashTable(1, a, b, prime, (float) 0.25);
+    HashTable *coursesTable = NewHashTable(1, a, b, prime, (float) 0.25);
     Graph *courseRelationGraph = NULL;
     Graph *StudentRelationGraph = NULL;
 
