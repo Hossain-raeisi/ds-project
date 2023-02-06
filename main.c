@@ -737,11 +737,10 @@ int IsStudentBetter(Student *student1, Student *student2) {
 
     for_each(element, student1->grades) {
         Grade *grade1 = (Grade *) element->content;
-        Grade *grade2 = (Grade *) SearchList(student2->grades, (int (*)(void *, int)) equalsGradeWithCourseCode,
-                                             grade1->course->code)->content;
-        if (grade2 != NULL) {
+        ListElement *grade2Element = SearchList(student2->grades, (int (*)(void *, int)) equalsGradeWithCourseCode,grade1->course->code);
+        if (grade2Element != NULL) {
             commonCourses += 1;
-            if (grade1 > grade2)
+            if (grade1->score > ((Grade *)grade2Element->content)->score)
                 student1BetterScores += 1;
         }
     }
@@ -1156,10 +1155,10 @@ void Compare(Graph *studentsGraph) {
         if (isStudent2Better)
             printf("?\n");
         else
-            printf(">\n");
+            printf("<\n");
     } else {
         if (isStudent2Better)
-            printf("<\n");
+            printf(">\n");
         else
             printf("?\n");
     }
@@ -1229,7 +1228,7 @@ int main() {
             AllRelatives(courseRelationGraph);
         } else if (strcmp("COMPARE", command) == 0) {
             if (StudentRelationGraph == NULL)
-                StudentRelationGraph = BuildStudentRelationGraph(coursesList);
+                StudentRelationGraph = BuildStudentRelationGraph(studentsList);
             Compare(StudentRelationGraph);
         } else {
             break;
