@@ -7,6 +7,9 @@
 #define for_each(element, list) \
     for(ListElement *element = list->first; element != NULL; element = (ListElement *)element->next)
 
+int MAX_VALUE = 100;
+int S = -2;
+
 int max(int a, int b) {
     return (a > b) ? a : b;
 }
@@ -35,7 +38,7 @@ Context *NewContext(int phase2) {
 }
 
 float minArray(float *array, int size) {
-    float minValue = 0;
+    float minValue = array[0];
 
     for (int i = 0; i < size; i++) {
         if (array[i] < minValue)
@@ -43,6 +46,27 @@ float minArray(float *array, int size) {
     }
 
     return minValue;
+}
+
+void **build2DArray(int a, int b, int elementSize) {
+    void **matrix = (void **) malloc(a * sizeof(int *));
+    for (int i = 0; i < a; i++) {
+        matrix[i] = (void *) malloc(b * elementSize);
+    }
+    return matrix;
+}
+
+int equalsIntPtrInt(int *intPtr, int normalInt) {
+    return *intPtr == normalInt;
+}
+
+void print2DArray(float **matrix, int a, int b) {
+    for (int i = 0; i < a; i++) {
+        for (int j = 0; j < b; j++) {
+            printf("%0.1f ", matrix[i][j]);
+        }
+        printf("\n");
+    }
 }
 
 // DOUBLE LINKED LIST --------------------------------------------------------------------------------------------------
@@ -53,23 +77,13 @@ typedef struct {
     struct ListElement *before;
 } ListElement;
 
-ListElement *NewListElement(void *content, ListElement *next, ListElement *before);
-
-ListElement *NewListElement(void *content, ListElement *next, ListElement *before) {
-    ListElement *listElement = (ListElement *) malloc(sizeof(ListElement));
-
-    listElement->content = content;
-    listElement->next = (struct ListElement *) next;
-    listElement->before = (struct ListElement *) before;
-
-    return listElement;
-}
-
 typedef struct {
     ListElement *first;
     ListElement *last;
     int size;
 } DoubleLinkedList;
+
+ListElement *NewListElement(void *content, ListElement *next, ListElement *before);
 
 DoubleLinkedList *NewDoubleLinkedList();
 
@@ -89,6 +103,18 @@ void InsertToSortedList(DoubleLinkedList *doubleLinkedList, void *value, int (*c
 
 ListElement *getBiggestSmallerElement(DoubleLinkedList *doubleLinkedList, void *value, int (*compare)(void *, void *));
 
+void InsertIntToSet(DoubleLinkedList *doubleLinkedList, int value);
+
+
+ListElement *NewListElement(void *content, ListElement *next, ListElement *before) {
+    ListElement *listElement = (ListElement *) malloc(sizeof(ListElement));
+
+    listElement->content = content;
+    listElement->next = (struct ListElement *) next;
+    listElement->before = (struct ListElement *) before;
+
+    return listElement;
+}
 
 DoubleLinkedList *NewDoubleLinkedList() {
     DoubleLinkedList *list = (DoubleLinkedList *) malloc(sizeof(DoubleLinkedList));
@@ -203,6 +229,16 @@ ListElement *getBiggestSmallerElement(DoubleLinkedList *doubleLinkedList, void *
     }
 
     return element;
+}
+
+void InsertIntToSet(DoubleLinkedList *doubleLinkedList, int value) {
+    ListElement *element = SearchList(doubleLinkedList, (int (*)(void *, int)) equalsIntPtrInt, value);
+    if (element != NULL)
+        return;
+
+    int *placeHolder = (int *) malloc(sizeof(int));
+    *placeHolder = value;
+    InsertToList(doubleLinkedList, placeHolder);
 }
 
 // AVL TREE ---------------------------------------------------------------------------------------------------------
@@ -463,7 +499,7 @@ HashTable *halfHashTableSize(HashTable *hashTable, int (*hash)(HashTable *, void
 }
 
 int hash(HashTable *hashTable, int id) {
-    return (int )((((long)hashTable->a * (long)id + (long)hashTable->b) % hashTable->prime) % hashTable->size);
+    return (int) ((((long) hashTable->a * (long) id + (long) hashTable->b) % hashTable->prime) % hashTable->size);
 }
 
 // GRAPH ---------------------------------------------------------------------------------------------------------------
@@ -577,12 +613,28 @@ Edge *NewEdge(WeightedGraphNode *from, WeightedGraphNode *to, float weight);
 
 BipartiteWeightedGraph *NewBipartiteWeightedGraph();
 
-BipartiteWeightedGraph *MaxWeightPerfectMatching(BipartiteWeightedGraph *);
-
 int compareIntWeightedGraphNode(WeightedGraphNode *weightedGraphNode1, WeightedGraphNode *weightedGraphNode2);
 
-void dualInitialization(float **weight, int size);
+int * SolveAssignmentHungarian(float **weightMatrix, int size);
 
+void dualInitialization(float **weight, int size, float *U, float *V);
+
+int primalInitialization(float **weight, int size, float *U, float *V, int *mates, int **relations);
+
+void pathInitialization(float **weight, int size, int *mates, int *labels, float *p, int *pie, float *U, float *V,
+                        DoubleLinkedList *L);
+
+void
+labelPropagation(float **weight, int size, int *mates, int *labels, float *p, int *pie, DoubleLinkedList *L, int *path);
+
+void aLabelPropagation(float **weight, int size, int *labels, DoubleLinkedList *L, int k);
+
+void
+bLabelPropagation(float **weight, int size, int *mates, int *labels, float *p, int *pie, DoubleLinkedList *L, int k);
+
+void dualIteration(float **weight, int size, int *labels, float *p, int *pie, float *U, float *V, DoubleLinkedList *L);
+
+void primalIteration(float **weight, int size, int *mates, int *labels, int *path, int **relations, int *card);
 
 WeightedGraphNode *NewWeightedGraphNode(void *content) {
     WeightedGraphNode *weightedGraphNode = (WeightedGraphNode *) malloc(sizeof(WeightedGraphNode));
@@ -609,15 +661,232 @@ BipartiteWeightedGraph *NewBipartiteWeightedGraph() {
     return bipartiteWeightedGraph;
 }
 
-BipartiteWeightedGraph *MaxWeightPerfectMatching(BipartiteWeightedGraph *bipartiteWeightedGraph) {
-    // TODO
-    return NULL;
-}
-
 int compareIntWeightedGraphNode(WeightedGraphNode *weightedGraphNode1, WeightedGraphNode *weightedGraphNode2) {
     return compareInt(*(int *) weightedGraphNode1->content, *(int *) weightedGraphNode2->content);
 }
 
+int *SolveAssignmentHungarian(float **weightMatrix, int size) {
+    float U[size];
+    float V[size];
+
+    dualInitialization(weightMatrix, size, U, V);
+    int mates[2 * size];
+    int **relations = (int **) build2DArray(size, size, sizeof(int));
+    int card = primalInitialization(weightMatrix, size, U, V, mates, (int **) relations);
+
+    while (card < size) {
+        int labels[2 * size];
+        float p[size];
+        int pie[size];
+        DoubleLinkedList *L = NewDoubleLinkedList();
+
+        pathInitialization(weightMatrix, size, mates, labels, p, pie, U, V, L);
+
+        int path = -1;
+        while (path == -1) {
+            while (path == -1 && L->size != 0) {
+                labelPropagation(weightMatrix, size, mates, labels, p, pie, L, &path);
+            }
+            if (path == -1) {
+                dualIteration(weightMatrix, size, labels, p, pie, U, V, L);
+            }
+        }
+
+        primalIteration(weightMatrix, size, mates, labels, &path, relations, &card);
+    }
+
+    return mates;
+}
+
+void dualInitialization(float **weight, int size, float *U, float *V) {
+    for (int i = 0; i < size; i++) {
+        U[i] = minArray(weight[i], size);
+
+        for (int j = 0; j < size; j++) {
+            weight[i][j] -= U[i];
+        }
+    }
+
+    for (int i = 0; i < size; i++) {
+        float minVal = weight[0][i];
+        for (int j = 0; j < size; j++) {
+            if (weight[j][i] < minVal)
+                minVal = weight[j][i];
+        }
+        V[i] = minVal;
+
+        for (int j = 0; j < size; j++) {
+            weight[j][i] -= V[i];
+        }
+    }
+}
+
+int primalInitialization(float **weight, int size, float *U, float *V, int *mates, int **relations) {
+    for (int i = 0; i < 2 * size; i++) {
+        mates[i] = -1;
+    }
+
+    int card = 0;
+    for (int i = 0; i < size; i++) {
+        for (int j = 0; j < size; j++) {
+            if (i == j)
+                continue;
+
+            if (weight[i][j] == 0 && mates[i] == -1 && mates[j + size] == -1) {
+                relations[i][j] = 1;
+                card += 1;
+                mates[i] = j;
+                mates[j + size] = i;
+            }
+        }
+    }
+
+    return card;
+}
+
+void pathInitialization(float **weight, int size, int *mates, int *labels, float *p, int *pie, float *U, float *V,
+                        DoubleLinkedList *L) {
+
+    for (int i = 0; i < 2 * size; i++) {
+        labels[i] = -1;
+    }
+
+    for (int i = 0; i < size; i++) {
+        p[i] = (float) MAX_VALUE;
+        pie[i] = -1;
+    }
+
+    for (int i = 0; i < size; i++) {
+        if (mates[i] != -1)
+            continue;
+
+        labels[i] = S;
+        InsertIntToSet(L, i);
+
+        for (int j = 0; j < size; j++) {
+            if (labels[j + size] != -1)
+                continue;
+
+            if (weight[i][j] < p[j]) {
+                p[j] = weight[i][j];
+                pie[j] = i;
+            }
+        }
+    }
+}
+
+void labelPropagation(float **weight, int size, int *mates, int *labels, float *p, int *pie, DoubleLinkedList *L,
+                      int *path) {
+    int k = *(int *) ListPopIndex(L, 0)->content;
+
+    if (k < size) {
+        aLabelPropagation(weight, size, labels, L, k);
+    } else {
+        if (mates[k] != -1) {
+            bLabelPropagation(weight, size, mates, labels, p, pie, L, k);
+        } else {
+            *path = k;
+        }
+    }
+}
+
+void aLabelPropagation(float **weight, int size, int *labels, DoubleLinkedList *L, int k) {
+    for (int j = 0; j < size; j++) {
+        if (labels[j + size] == -1 && weight[k][j] == 0) {
+            labels[j + size] = k;
+            InsertIntToSet(L, j + size);
+        }
+    }
+}
+
+void
+bLabelPropagation(float **weight, int size, int *mates, int *labels, float *p, int *pie, DoubleLinkedList *L, int k) {
+    if (labels[mates[k]] != -1)
+        return;
+
+    labels[mates[k]] = k;
+    InsertIntToSet(L, mates[k]);
+    for (int j = 0; j < size; j++) {
+        if (labels[size + j] != -1)
+            continue;
+
+        if (weight[mates[k]][j] < p[j]) {
+            p[j] = weight[mates[k]][j];
+            pie[j] = mates[k];
+        }
+    }
+}
+
+void dualIteration(float **weight, int size, int *labels, float *p, int *pie, float *U, float *V, DoubleLinkedList *L) {
+    float sigma = (float) MAX_VALUE;
+
+    for (int j = 0; j < size; j++) {
+        if (labels[j + size] == -1)
+            if (p[j] < sigma)
+                sigma = p[j];
+    }
+
+    for (int i = 0; i < size; i++) {
+        if (labels[i] == -1)
+            continue;
+
+        for (int j = 0; j < size; j++) {
+            weight[i][j] -= sigma;
+        }
+
+        U[i] += sigma;
+    }
+
+    for (int j = 0; j < size; j++) {
+        if (labels[j + size] == -1)
+            continue;
+
+        for (int i = 0; i < size; i++) {
+            weight[i][j] += sigma;
+        }
+
+        V[j] -= sigma;
+    }
+
+    for (int j = 0; j < size; j++) {
+        if (labels[j + size] != -1)
+            continue;
+
+        p[j] -= sigma;
+    }
+
+    for (int j = 0; j < size; j++) {
+        if (labels[j + size] == -1 && p[j] == 0) {
+            labels[j + size] = pie[j];
+            InsertIntToSet(L, j + size);
+        }
+    }
+}
+
+void primalIteration(float **weight, int size, int *mates, int *labels, int *path, int **relations, int *card) {
+    int j = *path;
+    float z;
+
+    do {
+        int i = labels[j];
+
+        int j2 = j % size;
+        int i2 = i % size;
+
+        mates[j] = i;
+        mates[i] = j;
+        relations[i2][j2] = 1;
+        *card += 1;
+
+        j = labels[i];
+        j2 = j % size;
+
+        if (labels[i] != S) {
+            relations[i2][j2] = 0;
+            *card -= 1;
+        }
+    } while (j != S);
+}
 
 // MODELS --------------------------------------------------------------------------------------------------------------
 
@@ -689,6 +958,8 @@ int equalsGraphNodeStudent(GraphNode *graphNode, int studentNumber);
 void PrintCourseSelection(BipartiteWeightedGraph *termCourseMatchingGraph);
 
 float *GetCourseAvgScores(Course *course, int minTerm, int maxTerm);
+
+float **buildStudentTermCourseMatrix(Student *student);
 
 
 Student *NewStudent(int number) {
@@ -1303,10 +1574,12 @@ void MinRisk(DoubleLinkedList *studentsList) {
     Student *student = (Student *) SearchList(studentsList, (int (*)(void *, int)) equalsStudent,
                                               studentNumber)->content;
 
-    BipartiteWeightedGraph *studentTermCourseGraph = buildStudentTermCourseGraph(student);
-    BipartiteWeightedGraph *studentMinRiskCourseSelectionGraph = MaxWeightPerfectMatching(studentTermCourseGraph);
+//    float **termCourseMatrix = buildStudentTermCourseMatrix(student);
 
-    PrintCourseSelection(studentMinRiskCourseSelectionGraph);
+    // TODO
+//    SolveAssignmentHungarian(termCourseMatrix, student->grades->size);
+
+//    PrintCourseSelection("yes");
 }
 
 BipartiteWeightedGraph *buildStudentTermCourseGraph(Student *student) {
@@ -1353,7 +1626,6 @@ void addStudentTermCourseGraphEdges(BipartiteWeightedGraph *studentTermCourseGra
 // ---------------------------------------------------------------------------------------------------------------------
 
 int main() {
-
     int numberOfCommands, a, b, prime;
     scanf("%d", &numberOfCommands);
     scanf("%d", &a);
