@@ -11,6 +11,15 @@ int max(int a, int b) {
     return (a > b) ? a : b;
 }
 
+int compareInt(int a, int b) {
+    if (a == b)
+        return 0;
+    else if (a > 1)
+        return 1;
+
+    return 0;
+}
+
 typedef struct {
     int phase2;
 } Context;
@@ -23,6 +32,17 @@ Context *NewContext(int phase2) {
     context->phase2 = phase2;
 
     return context;
+}
+
+float minArray(float *array, int size) {
+    float minValue = 0;
+
+    for (int i = 0; i < size; i++) {
+        if (array[i] < minValue)
+            minValue = array[i];
+    }
+
+    return minValue;
 }
 
 // DOUBLE LINKED LIST --------------------------------------------------------------------------------------------------
@@ -533,6 +553,72 @@ int IsDescendant(GraphNode *node, GraphNode *root, DoubleLinkedList *visited, in
     return 0;
 }
 
+// BIPARTITE WEIGHTED GRAPH --------------------------------------------------------------------------------------------
+
+typedef struct {
+    void *content;
+    DoubleLinkedList *edges;
+} WeightedGraphNode;
+
+typedef struct {
+    WeightedGraphNode *from;
+    WeightedGraphNode *to;
+    float weight;
+} Edge;
+
+typedef struct {
+    DoubleLinkedList *rightNodes;
+    DoubleLinkedList *leftNodes;
+} BipartiteWeightedGraph;
+
+WeightedGraphNode *NewWeightedGraphNode(void *content);
+
+Edge *NewEdge(WeightedGraphNode *from, WeightedGraphNode *to, float weight);
+
+BipartiteWeightedGraph *NewBipartiteWeightedGraph();
+
+BipartiteWeightedGraph *MaxWeightPerfectMatching(BipartiteWeightedGraph *);
+
+int compareIntWeightedGraphNode(WeightedGraphNode *weightedGraphNode1, WeightedGraphNode *weightedGraphNode2);
+
+void dualInitialization(float **weight, int size);
+
+
+WeightedGraphNode *NewWeightedGraphNode(void *content) {
+    WeightedGraphNode *weightedGraphNode = (WeightedGraphNode *) malloc(sizeof(WeightedGraphNode));
+    weightedGraphNode->content = content;
+    return weightedGraphNode;
+}
+
+Edge *NewEdge(WeightedGraphNode *from, WeightedGraphNode *to, float weight) {
+    Edge *edge = (Edge *) malloc(sizeof(Edge));
+
+    edge->from = from;
+    edge->to = to;
+    edge->weight = weight;
+
+    return edge;
+}
+
+BipartiteWeightedGraph *NewBipartiteWeightedGraph() {
+    BipartiteWeightedGraph *bipartiteWeightedGraph = (BipartiteWeightedGraph *) malloc(sizeof(bipartiteWeightedGraph));
+
+    bipartiteWeightedGraph->leftNodes = NewDoubleLinkedList();
+    bipartiteWeightedGraph->rightNodes = NewDoubleLinkedList();
+
+    return bipartiteWeightedGraph;
+}
+
+BipartiteWeightedGraph *MaxWeightPerfectMatching(BipartiteWeightedGraph *bipartiteWeightedGraph) {
+    // TODO
+    return NULL;
+}
+
+int compareIntWeightedGraphNode(WeightedGraphNode *weightedGraphNode1, WeightedGraphNode *weightedGraphNode2) {
+    return compareInt(*(int *) weightedGraphNode1->content, *(int *) weightedGraphNode2->content);
+}
+
+
 // MODELS --------------------------------------------------------------------------------------------------------------
 
 typedef struct {
@@ -540,6 +626,21 @@ typedef struct {
     char name[30];
     DoubleLinkedList *grades;
 } Student;
+
+typedef struct {
+    int code;
+    char name[10];
+    DoubleLinkedList *grades;
+} Course;
+
+typedef struct {
+    Student *student;
+    Course *course;
+    float score;
+    int term;
+    ListElement *studentListElement;
+    ListElement *courseListElement;
+} Grade;
 
 Student *NewStudent(int number);
 
@@ -553,12 +654,6 @@ int compareStudentByName(Student *student1, Student *student2);
 
 void PrintStudent(Student *student);
 
-typedef struct {
-    int code;
-    char name[10];
-    DoubleLinkedList *grades;
-} Course;
-
 Course *NewCourse(int code);
 
 int equalsCourse(Course *course, int code);
@@ -571,18 +666,7 @@ int compareCourseByName(Course *course1, Course *course2);
 
 void PrintCourse(Course *course);
 
-typedef struct {
-    Student *student;
-    Course *course;
-    float score;
-    int term;
-    ListElement *studentListElement;
-    ListElement *courseListElement;
-} Grade;
-
 Grade *NewGrade(Student *student, Course *course, float score, int term);
-
-int equalsGrade(Grade *grade1, Grade *grade2);
 
 int equalsGradeWithCourseCode(Grade *grade, int courseCode);
 
@@ -601,6 +685,10 @@ int compareGraphNodeCourse(GraphNode *graphNode1, GraphNode *graphNode2);
 int IsStudentBetter(Student *student1, Student *student2);
 
 int equalsGraphNodeStudent(GraphNode *graphNode, int studentNumber);
+
+void PrintCourseSelection(BipartiteWeightedGraph *termCourseMatchingGraph);
+
+float *GetCourseAvgScores(Course *course, int minTerm, int maxTerm);
 
 
 Student *NewStudent(int number) {
@@ -713,11 +801,6 @@ Grade *NewGrade(Student *student, Course *course, float score, int term) {
     return grade;
 }
 
-int equalsGrade(Grade *grade1, Grade *grade2) {
-    return grade1->term == grade2->term && grade1->student->number == grade2->student->number &&
-           grade1->course->code == grade2->course->code;
-}
-
 int equalsGradeWithCourseCode(Grade *grade, int courseCode) {
     return grade->course->code == courseCode;
 }
@@ -781,6 +864,33 @@ int equalsGraphNodeStudent(GraphNode *graphNode, int studentNumber) {
     return ((Student *) graphNode->content)->number == studentNumber;
 }
 
+void PrintCourseSelection(BipartiteWeightedGraph *termCourseMatchingGraph) {
+    for_each(termElement, termCourseMatchingGraph->leftNodes) {
+        printf("%d %d \n", *(int *) ((WeightedGraphNode *) termElement->content)->content,
+               ((Course *) ((WeightedGraphNode *) termElement->content)->content)->code);
+    }
+}
+
+float *GetCourseAvgScores(Course *course, int minTerm, int maxTerm) {
+    int sumScores[maxTerm - minTerm + 1];
+    int countStudents[maxTerm - minTerm + 1];
+
+    for_each(gradeElement, course->grades) {
+        Grade *grade = (Grade *) gradeElement->content;
+        sumScores[grade->term - minTerm] += grade->term;
+        countStudents[grade->term - minTerm] += 1;
+    }
+
+    float avgs[maxTerm - minTerm + 1];
+    for (int i = 0; i < maxTerm - minTerm + 1; i++) {
+        if (sumScores[i] == 0 || countStudents[i] == 0) {
+            avgs[i] = 0;
+            continue;
+        }
+        avgs[i] = (float) sumScores[i] / (float) countStudents[i];
+    }
+    return avgs;
+}
 
 // COMMANDS ------------------------------------------------------------------------------------------------------------
 
@@ -833,6 +943,11 @@ Graph *BuildStudentRelationGraph(DoubleLinkedList *studentsList);
 
 void Compare(Graph *studentsGraph);
 
+void MinRisk(DoubleLinkedList *studentsList);
+
+BipartiteWeightedGraph *buildStudentTermCourseGraph(Student *student);
+
+void addStudentTermCourseGraphEdges(BipartiteWeightedGraph *studentTermCourseGraph);
 
 void
 AddStudent(DoubleLinkedList *studentsList, BinaryTreeNode **studentsTree, HashTable **studentsTable, Context *context) {
@@ -943,8 +1058,8 @@ void DeleteStudent(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList
     int studentNumber;
     scanf("%d", &studentNumber);
 
-    ListElement *studentElement = (ListElement *) SearchList(studentsList, (int (*)(void *, int)) equalsStudent,
-                                                             studentNumber);
+    ListElement *studentElement = SearchList(studentsList, (int (*)(void *, int)) equalsStudent,
+                                             studentNumber);
 
     RemoveElement(studentsList, studentElement);
     if (context->phase2) {
@@ -966,8 +1081,8 @@ void DeleteCourse(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList,
     int courseCode;
     scanf("%d", &courseCode);
 
-    ListElement *courseElement = (ListElement *) SearchList(coursesList, (int (*)(void *, int)) equalsCourse,
-                                                            courseCode);
+    ListElement *courseElement = SearchList(coursesList, (int (*)(void *, int)) equalsCourse,
+                                            courseCode);
 
     RemoveElement(coursesList, courseElement);
     if (context->phase2) {
@@ -993,9 +1108,9 @@ void DeleteGrade(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList, 
 
     Student *student = (Student *) SearchList(studentsList, (int (*)(void *, int)) equalsStudent,
                                               studentNumber)->content;
-    ListElement *gradeElement = (ListElement *) SearchList(student->grades,
-                                                           (int (*)(void *, int)) equalsGradeWithCourseCode,
-                                                           courseCode);
+    ListElement *gradeElement = SearchList(student->grades,
+                                           (int (*)(void *, int)) equalsGradeWithCourseCode,
+                                           courseCode);
     Grade *grade = (Grade *) gradeElement->content;
 
     RemoveElement(grade->student->grades, grade->studentListElement);
@@ -1181,6 +1296,60 @@ void Compare(Graph *studentsGraph) {
     }
 }
 
+void MinRisk(DoubleLinkedList *studentsList) {
+    int studentNumber;
+    scanf("%d", &studentNumber);
+
+    Student *student = (Student *) SearchList(studentsList, (int (*)(void *, int)) equalsStudent,
+                                              studentNumber)->content;
+
+    BipartiteWeightedGraph *studentTermCourseGraph = buildStudentTermCourseGraph(student);
+    BipartiteWeightedGraph *studentMinRiskCourseSelectionGraph = MaxWeightPerfectMatching(studentTermCourseGraph);
+
+    PrintCourseSelection(studentMinRiskCourseSelectionGraph);
+}
+
+BipartiteWeightedGraph *buildStudentTermCourseGraph(Student *student) {
+    BipartiteWeightedGraph *bipartiteWeightedGraph = NewBipartiteWeightedGraph();
+
+    for_each(gradeElement, student->grades) {
+        WeightedGraphNode *termWeightedGraphNode = NewWeightedGraphNode(&((Grade *) gradeElement->content)->term);
+        InsertToSortedList(bipartiteWeightedGraph->leftNodes, termWeightedGraphNode,
+                           (int (*)(void *, void *)) compareIntWeightedGraphNode);
+        WeightedGraphNode *courseWeightedGraphNode = NewWeightedGraphNode(((Grade *) gradeElement->content)->course);
+        InsertToList(bipartiteWeightedGraph->rightNodes, courseWeightedGraphNode);
+    }
+
+    addStudentTermCourseGraphEdges(bipartiteWeightedGraph);
+    return bipartiteWeightedGraph;
+}
+
+void addStudentTermCourseGraphEdges(BipartiteWeightedGraph *studentTermCourseGraph) {
+    for_each(courseNodeElement, studentTermCourseGraph->rightNodes) {
+        WeightedGraphNode *courseNode = (WeightedGraphNode *) courseNodeElement->content;
+        Course *course = (Course *) (courseNode)->content;
+
+        int minTerm = *((int *) studentTermCourseGraph->leftNodes->first->content);
+        int maxTerm = *((int *) studentTermCourseGraph->leftNodes->last->content);
+        float *courseAvgs = GetCourseAvgScores(course, minTerm, maxTerm);
+
+        for_each(termNodeElement, studentTermCourseGraph->leftNodes) {
+
+            WeightedGraphNode *termNode = (WeightedGraphNode *) termNodeElement->content;
+            Edge *edge1 = NewEdge(termNode,
+                                  courseNode,
+                                  courseAvgs[*(int *) termNode->content - minTerm]);
+            InsertToList(termNode->edges, edge1);
+
+            // todo: is this necessary?
+            Edge *edge2 = NewEdge(courseNode,
+                                  termNode,
+                                  courseAvgs[*(int *) termNode->content - minTerm]);
+            InsertToList(courseNode->edges, edge2);
+        }
+    }
+}
+
 // ---------------------------------------------------------------------------------------------------------------------
 
 int main() {
@@ -1247,6 +1416,8 @@ int main() {
             if (StudentRelationGraph == NULL)
                 StudentRelationGraph = BuildStudentRelationGraph(studentsList);
             Compare(StudentRelationGraph);
+        } else if (strcmp("MINRISK", command) == 0) {
+            MinRisk(studentsList);
         } else {
             break;
         }
@@ -1254,5 +1425,3 @@ int main() {
 
     return 0;
 }
-
-
