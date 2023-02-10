@@ -554,7 +554,7 @@ void PrintStudent(Student *student);
 typedef struct {
     int code;
     char name[10];
-    DoubleLinkedList *students;
+    DoubleLinkedList *grades;
 } Course;
 
 Course *NewCourse(int code);
@@ -578,7 +578,11 @@ typedef struct {
 
 Grade *NewGrade(Student *student, Course *course, float score, int term);
 
+int equalsGrade(Grade *grade1, Grade *grade2);
+
 int equalsGradeWithCourseCode(Grade *grade, int courseCode);
+
+int equalsGradeWithStudentNumber(Grade *grade, int studentNumber);
 
 int hashStudent(HashTable *hashTable, void *content);
 
@@ -638,7 +642,7 @@ void PrintStudent(Student *student) {
     for_each(element, student->grades) {
         Grade *grade = (Grade *) element->content;
         if ((int) grade->score == grade->score)
-            printf("%d %d %d\n", grade->course->code, grade->term, (int )grade->score);
+            printf("%d %d %d\n", grade->course->code, grade->term, (int) grade->score);
         else
             printf("%d %d %0.1f\n", grade->course->code, grade->term, grade->score);
     }
@@ -649,7 +653,7 @@ Course *NewCourse(int code) {
 
     course->code = code;
     scanf("%s", course->name);
-    course->students = NewDoubleLinkedList();
+    course->grades = NewDoubleLinkedList();
 
     return course;
 }
@@ -683,18 +687,14 @@ int compareCourseByName(Course *course1, Course *course2) {
 }
 
 void PrintCourse(Course *course) {
-    printf("%d %s %d\n", course->code, course->name, course->students->size);
-    for_each(element, course->students) {
-        Student *student = (Student *) element->content;
-        // TODO: refactor to speed up
-        Grade *grade = (Grade *) SearchList(student->grades, (int (*)(void *, int)) equalsGradeWithCourseCode,
-                                            course->code)->content;
-
+    printf("%d %s %d\n", course->code, course->name, course->grades->size);
+    for_each(element, course->grades) {
+        Grade *grade = (Grade *) element->content;
 
         if ((int) grade->score == grade->score)
-            printf("%d %d %d\n", student->number, grade->term, (int )grade->score);
+            printf("%d %d %d\n", grade->student->number, grade->term, (int) grade->score);
         else
-            printf("%d %d %0.1f\n", student->number, grade->term, grade->score);
+            printf("%d %d %0.1f\n", grade->student->number, grade->term, grade->score);
     }
 }
 
@@ -709,8 +709,17 @@ Grade *NewGrade(Student *student, Course *course, float score, int term) {
     return grade;
 }
 
+int equalsGrade(Grade *grade1, Grade *grade2) {
+    return grade1->term == grade2->term && grade1->student->number == grade2->student->number &&
+           grade1->course->code == grade2->course->code;
+}
+
 int equalsGradeWithCourseCode(Grade *grade, int courseCode) {
     return grade->course->code == courseCode;
+}
+
+int equalsGradeWithStudentNumber(Grade *grade, int studentNumber) {
+    return grade->student->number == studentNumber;
 }
 
 int hashStudent(HashTable *hashTable, void *content) {
@@ -724,14 +733,14 @@ int hashCourse(HashTable *hashTable, void *content) {
 int AreDirectRelative(Course *course1, Course *course2) {
     int commonStudents = 0;
 
-    for_each(element, course1->students) {
-        if (SearchList(course2->students, (int (*)(void *, int)) equalsStudent,
-                       ((Student *) element->content)->number) != NULL)
+    for_each(element, course1->grades) {
+        if (SearchList(course2->grades, (int (*)(void *, int)) equalsGradeWithStudentNumber,
+                       ((Grade *) element->content)->student->number) != NULL)
             commonStudents += 1;
     }
 
-    if (course1->students->size > 0 && course2->students->size > 0 &&
-        commonStudents > 0.5 * course1->students->size && commonStudents > 0.5 * course2->students->size)
+    if (course1->grades->size > 0 && course2->grades->size > 0 &&
+        commonStudents > 0.5 * course1->grades->size && commonStudents > 0.5 * course2->grades->size)
         return 1;
     return 0;
 }
@@ -787,7 +796,7 @@ void EditGrade(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList, Co
 void DeleteStudent(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList, BinaryTreeNode **studentsTree,
                    HashTable **studentsTable, Context *context);
 
-void deleteStudentFromCourses(DoubleLinkedList *coursesList, Student *studentList, Context *context);
+void deleteStudentFromCourses(DoubleLinkedList *coursesList, Student *student, Context *context);
 
 void DeleteCourse(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList, BinaryTreeNode **coursesTree,
                   HashTable **coursesTable, Context *context);
@@ -869,7 +878,7 @@ void AddGrade(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList, Con
     Grade *grade = NewGrade(student, course, score, semesterCode);
 
     InsertToList(student->grades, grade);
-    InsertToList(course->students, student);
+    InsertToList(course->grades, grade);
 }
 
 void EditStudent(DoubleLinkedList *studentsList, BinaryTreeNode **studentsTree, Context *context) {
@@ -938,14 +947,14 @@ void DeleteStudent(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList
     deleteStudentFromCourses(coursesList, studentElement->content, NULL);
 }
 
-void deleteStudentFromCourses(DoubleLinkedList *coursesList, Student *studentList, Context *context) {
-    for_each(element, studentList->grades) {
+void deleteStudentFromCourses(DoubleLinkedList *coursesList, Student *student, Context *context) {
+    for_each(element, student->grades) {
         Course *course = ((Grade *) element->content)->course;
 
-        ListElement *studentElement = (ListElement *) SearchList(course->students,
-                                                                 (int (*)(void *, int)) equalsStudent,
-                                                                 studentList->number);
-        RemoveElement(course->students, studentElement);
+        ListElement *gradeElement = (ListElement *) SearchList(course->grades,
+                                                               (int (*)(void *, int)) equalsGradeWithStudentNumber,
+                                                               student->number);
+        RemoveElement(course->grades, gradeElement);
     }
 }
 
@@ -966,8 +975,9 @@ void DeleteCourse(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList,
 }
 
 void deleteCourseFromStudentGrades(DoubleLinkedList *studentsList, Course *courseList, Context *context) {
-    for_each(element, courseList->students) {
-        Student *student = (Student *) element->content;
+    for_each(element, courseList->grades) {
+        Grade *grade = (Grade *) element->content;
+        Student *student = grade->student;
         ListElement *gradeElement = (ListElement *) SearchList(student->grades,
                                                                (int (*)(void *, int)) equalsGradeWithCourseCode,
                                                                courseList->code);
@@ -984,16 +994,16 @@ void DeleteGrade(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList, 
 
     Student *student = (Student *) SearchList(studentsList, (int (*)(void *, int)) equalsStudent,
                                               studentNumber)->content;
-    ListElement *gradeElement = (ListElement *) SearchList(student->grades,
-                                                           (int (*)(void *, int)) equalsGradeWithCourseCode,
-                                                           courseCode);
-    Course *course = ((Grade *) gradeElement->content)->course;
-    ListElement *studentElement = (ListElement *) SearchList(course->students, (int (*)(void *, int)) equalsStudent,
-                                                             studentNumber);
+    ListElement *courseGradeElement = (ListElement *) SearchList(student->grades,
+                                                                 (int (*)(void *, int)) equalsGradeWithCourseCode,
+                                                                 courseCode);
+    Course *course = ((Grade *) courseGradeElement->content)->course;
+    ListElement *studentGradeElement = (ListElement *) SearchList(course->grades,
+                                                                  (int (*)(void *, int)) equalsGradeWithStudentNumber,
+                                                                  studentNumber);
 
-    RemoveElement(student->grades, gradeElement);
-    RemoveElement(course->students, studentElement);
-
+    RemoveElement(student->grades, courseGradeElement);
+    RemoveElement(course->grades, studentGradeElement);
 }
 
 void NumberOfCourses(DoubleLinkedList *studentsList) {
@@ -1012,7 +1022,7 @@ void NumberOfStudentsOfCourse(DoubleLinkedList *coursesList) {
 
     Course *course = (Course *) SearchList(coursesList, (int (*)(void *, int)) equalsCourse, code)->content;
 
-    printf("%d\n", course->students->size);
+    printf("%d\n", course->grades->size);
 }
 
 Grade *findGrade(DoubleLinkedList *studentsList, DoubleLinkedList *coursesList, int studentNumber, int courseCode) {
