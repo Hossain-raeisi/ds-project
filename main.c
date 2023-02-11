@@ -14,13 +14,13 @@ int max(int a, int b) {
     return (a > b) ? a : b;
 }
 
-int compareInt(int a, int b) {
-    if (a == b)
+int compareInt(int *a, int *b) {
+    if (*a == *b)
         return 0;
-    else if (a > 1)
+    else if (*a > *b)
         return 1;
 
-    return 0;
+    return -1;
 }
 
 typedef struct {
@@ -69,6 +69,14 @@ void print2DArray(float **matrix, int a, int b) {
     }
 }
 
+void InvertCostMatrix(float **matrix, int a, int b) {
+    for (int i = 0; i < a; i++) {
+        for (int j = 0; j < b; j++) {
+            matrix[i][j] = (float) MAX_VALUE - matrix[i][j] - 30;
+        }
+    }
+}
+
 // DOUBLE LINKED LIST --------------------------------------------------------------------------------------------------
 
 typedef struct {
@@ -104,6 +112,8 @@ void InsertToSortedList(DoubleLinkedList *doubleLinkedList, void *value, int (*c
 ListElement *getBiggestSmallerElement(DoubleLinkedList *doubleLinkedList, void *value, int (*compare)(void *, void *));
 
 void InsertIntToSet(DoubleLinkedList *doubleLinkedList, int value);
+
+void InsertToSortedListWithDuplicates(DoubleLinkedList *doubleLinkedList, void *value, int (*compare)(void *, void *));
 
 
 ListElement *NewListElement(void *content, ListElement *next, ListElement *before) {
@@ -212,6 +222,33 @@ void InsertToSortedList(DoubleLinkedList *doubleLinkedList, void *value, int (*c
         if (biggestSmallerElement->next != NULL) {
             newElement->next = (struct ListElement *) biggestSmallerElement->next;
         }
+        biggestSmallerElement->next = (struct ListElement *) newElement;
+    }
+
+    doubleLinkedList->size += 1;
+}
+
+void InsertToSortedListWithDuplicates(DoubleLinkedList *doubleLinkedList, void *value, int (*compare)(void *, void *)) {
+    if (doubleLinkedList->size == 0) {
+        InsertToList(doubleLinkedList, value);
+        return;
+    }
+
+    ListElement *biggestSmallerElement = getBiggestSmallerElement(doubleLinkedList, value, compare);
+
+    ListElement *newElement = NewListElement(value, NULL, biggestSmallerElement);
+
+    if (biggestSmallerElement == NULL) {
+        newElement->next = (struct ListElement *) doubleLinkedList->first;
+        doubleLinkedList->first = newElement;
+    } else {
+        if (biggestSmallerElement->next != NULL) {
+            newElement->next = (struct ListElement *) biggestSmallerElement->next;
+            ((ListElement *) biggestSmallerElement->next)->before = (struct ListElement *) newElement;
+        } else {
+            doubleLinkedList->last = newElement;
+        }
+
         biggestSmallerElement->next = (struct ListElement *) newElement;
     }
 
@@ -589,33 +626,9 @@ int IsDescendant(GraphNode *node, GraphNode *root, DoubleLinkedList *visited, in
     return 0;
 }
 
-// BIPARTITE WEIGHTED GRAPH --------------------------------------------------------------------------------------------
+// HUNGARIAN SOLUTION FOR MIN WEIGHT MATCHING --------------------------------------------------------------------------
 
-typedef struct {
-    void *content;
-    DoubleLinkedList *edges;
-} WeightedGraphNode;
-
-typedef struct {
-    WeightedGraphNode *from;
-    WeightedGraphNode *to;
-    float weight;
-} Edge;
-
-typedef struct {
-    DoubleLinkedList *rightNodes;
-    DoubleLinkedList *leftNodes;
-} BipartiteWeightedGraph;
-
-WeightedGraphNode *NewWeightedGraphNode(void *content);
-
-Edge *NewEdge(WeightedGraphNode *from, WeightedGraphNode *to, float weight);
-
-BipartiteWeightedGraph *NewBipartiteWeightedGraph();
-
-int compareIntWeightedGraphNode(WeightedGraphNode *weightedGraphNode1, WeightedGraphNode *weightedGraphNode2);
-
-int * SolveAssignmentHungarian(float **weightMatrix, int size);
+int *SolveAssignmentHungarian(float **weightMatrix, int size, int *mates);
 
 void dualInitialization(float **weight, int size, float *U, float *V);
 
@@ -636,41 +649,12 @@ void dualIteration(float **weight, int size, int *labels, float *p, int *pie, fl
 
 void primalIteration(float **weight, int size, int *mates, int *labels, int *path, int **relations, int *card);
 
-WeightedGraphNode *NewWeightedGraphNode(void *content) {
-    WeightedGraphNode *weightedGraphNode = (WeightedGraphNode *) malloc(sizeof(WeightedGraphNode));
-    weightedGraphNode->content = content;
-    return weightedGraphNode;
-}
 
-Edge *NewEdge(WeightedGraphNode *from, WeightedGraphNode *to, float weight) {
-    Edge *edge = (Edge *) malloc(sizeof(Edge));
-
-    edge->from = from;
-    edge->to = to;
-    edge->weight = weight;
-
-    return edge;
-}
-
-BipartiteWeightedGraph *NewBipartiteWeightedGraph() {
-    BipartiteWeightedGraph *bipartiteWeightedGraph = (BipartiteWeightedGraph *) malloc(sizeof(bipartiteWeightedGraph));
-
-    bipartiteWeightedGraph->leftNodes = NewDoubleLinkedList();
-    bipartiteWeightedGraph->rightNodes = NewDoubleLinkedList();
-
-    return bipartiteWeightedGraph;
-}
-
-int compareIntWeightedGraphNode(WeightedGraphNode *weightedGraphNode1, WeightedGraphNode *weightedGraphNode2) {
-    return compareInt(*(int *) weightedGraphNode1->content, *(int *) weightedGraphNode2->content);
-}
-
-int *SolveAssignmentHungarian(float **weightMatrix, int size) {
+int *SolveAssignmentHungarian(float **weightMatrix, int size, int *mates) {
     float U[size];
     float V[size];
 
     dualInitialization(weightMatrix, size, U, V);
-    int mates[2 * size];
     int **relations = (int **) build2DArray(size, size, sizeof(int));
     int card = primalInitialization(weightMatrix, size, U, V, mates, (int **) relations);
 
@@ -729,9 +713,6 @@ int primalInitialization(float **weight, int size, float *U, float *V, int *mate
     int card = 0;
     for (int i = 0; i < size; i++) {
         for (int j = 0; j < size; j++) {
-            if (i == j)
-                continue;
-
             if (weight[i][j] == 0 && mates[i] == -1 && mates[j + size] == -1) {
                 relations[i][j] = 1;
                 card += 1;
@@ -955,11 +936,13 @@ int IsStudentBetter(Student *student1, Student *student2);
 
 int equalsGraphNodeStudent(GraphNode *graphNode, int studentNumber);
 
-void PrintCourseSelection(BipartiteWeightedGraph *termCourseMatchingGraph);
+float *GetCourseAvgScores(Course *course, int minTerm, int maxTerm, float *avgs);
 
-float *GetCourseAvgScores(Course *course, int minTerm, int maxTerm);
+float **BuildStudentTermCourseMatrix(Student *student, DoubleLinkedList *terms, DoubleLinkedList *courses);
 
-float **buildStudentTermCourseMatrix(Student *student);
+void PrintTermCourseSelection(DoubleLinkedList *terms, DoubleLinkedList *courses, int *mates);
+
+void printIntListElements(DoubleLinkedList *doubleLinkedList);
 
 
 Student *NewStudent(int number) {
@@ -1135,24 +1118,20 @@ int equalsGraphNodeStudent(GraphNode *graphNode, int studentNumber) {
     return ((Student *) graphNode->content)->number == studentNumber;
 }
 
-void PrintCourseSelection(BipartiteWeightedGraph *termCourseMatchingGraph) {
-    for_each(termElement, termCourseMatchingGraph->leftNodes) {
-        printf("%d %d \n", *(int *) ((WeightedGraphNode *) termElement->content)->content,
-               ((Course *) ((WeightedGraphNode *) termElement->content)->content)->code);
-    }
-}
-
-float *GetCourseAvgScores(Course *course, int minTerm, int maxTerm) {
-    int sumScores[maxTerm - minTerm + 1];
+float *GetCourseAvgScores(Course *course, int minTerm, int maxTerm, float *avgs) {
+    float sumScores[maxTerm - minTerm + 1];
     int countStudents[maxTerm - minTerm + 1];
+
+    for (int i = 0; i < maxTerm - minTerm + 1; i++) {
+        sumScores[i] = countStudents[i] = 0;
+    }
 
     for_each(gradeElement, course->grades) {
         Grade *grade = (Grade *) gradeElement->content;
-        sumScores[grade->term - minTerm] += grade->term;
+        sumScores[grade->term - minTerm] += grade->score;
         countStudents[grade->term - minTerm] += 1;
     }
 
-    float avgs[maxTerm - minTerm + 1];
     for (int i = 0; i < maxTerm - minTerm + 1; i++) {
         if (sumScores[i] == 0 || countStudents[i] == 0) {
             avgs[i] = 0;
@@ -1161,6 +1140,68 @@ float *GetCourseAvgScores(Course *course, int minTerm, int maxTerm) {
         avgs[i] = (float) sumScores[i] / (float) countStudents[i];
     }
     return avgs;
+}
+
+float **BuildStudentTermCourseMatrix(Student *student, DoubleLinkedList *terms, DoubleLinkedList *courses) {
+    int size = student->grades->size;
+    float **scores = (float **) build2DArray(size, size, sizeof(float));
+
+    int minTerm = *(int *) terms->first->content;
+    int maxTerm = *(int *) terms->last->content;
+
+    ListElement *courseElement = courses->first;
+    for (int i = 0; i < size; i++) {
+        float courseAvgs[maxTerm - minTerm + 1];
+        GetCourseAvgScores(courseElement->content, minTerm, maxTerm, courseAvgs);
+
+        ListElement *termElement = terms->first;
+        for (int j = 0; j < size; j++) {
+            scores[j][i] = courseAvgs[*(int *) termElement->content - minTerm];
+            termElement = iterOnList(termElement, 1);
+        }
+
+        courseElement = iterOnList(courseElement, 1);
+    }
+
+    return scores;
+}
+
+void PrintTermCourseSelection(DoubleLinkedList *terms, DoubleLinkedList *courses, int *mates) {
+
+
+    ListElement *termElement = terms->first;
+
+    DoubleLinkedList *currentTermCourses = NewDoubleLinkedList();
+    int i = 0;
+
+    while (1) {
+        InsertToSortedListWithDuplicates(currentTermCourses,
+                                         &((Course *) iterOnList(courses->first, mates[i] % terms->size)->content)->code,
+                                         (int (*)(void *, void *)) compareInt);
+
+        if (termElement->next == NULL || (termElement->next != NULL && *(int *) termElement->content !=
+                                                                       *(int *) ((ListElement *) termElement->next)->content)) {
+            printf("%d ", *(int *) termElement->content);
+            printIntListElements(currentTermCourses);
+
+            if (termElement->next == NULL)
+                break;
+
+            currentTermCourses->first = NULL;
+            currentTermCourses->last = NULL;
+            currentTermCourses->size = 0;
+        }
+
+        termElement = iterOnList(termElement, 1);
+        i += 1;
+    }
+}
+
+void printIntListElements(DoubleLinkedList *doubleLinkedList) {
+    for_each(intElement, doubleLinkedList) {
+        printf("%d ", *(int *) intElement->content);
+    }
+    printf("\n");
 }
 
 // COMMANDS ------------------------------------------------------------------------------------------------------------
@@ -1216,9 +1257,6 @@ void Compare(Graph *studentsGraph);
 
 void MinRisk(DoubleLinkedList *studentsList);
 
-BipartiteWeightedGraph *buildStudentTermCourseGraph(Student *student);
-
-void addStudentTermCourseGraphEdges(BipartiteWeightedGraph *studentTermCourseGraph);
 
 void
 AddStudent(DoubleLinkedList *studentsList, BinaryTreeNode **studentsTree, HashTable **studentsTable, Context *context) {
@@ -1574,53 +1612,27 @@ void MinRisk(DoubleLinkedList *studentsList) {
     Student *student = (Student *) SearchList(studentsList, (int (*)(void *, int)) equalsStudent,
                                               studentNumber)->content;
 
-//    float **termCourseMatrix = buildStudentTermCourseMatrix(student);
-
-    // TODO
-//    SolveAssignmentHungarian(termCourseMatrix, student->grades->size);
-
-//    PrintCourseSelection("yes");
-}
-
-BipartiteWeightedGraph *buildStudentTermCourseGraph(Student *student) {
-    BipartiteWeightedGraph *bipartiteWeightedGraph = NewBipartiteWeightedGraph();
+    DoubleLinkedList *courses = NewDoubleLinkedList();
+    DoubleLinkedList *terms = NewDoubleLinkedList();
 
     for_each(gradeElement, student->grades) {
-        WeightedGraphNode *termWeightedGraphNode = NewWeightedGraphNode(&((Grade *) gradeElement->content)->term);
-        InsertToSortedList(bipartiteWeightedGraph->leftNodes, termWeightedGraphNode,
-                           (int (*)(void *, void *)) compareIntWeightedGraphNode);
-        WeightedGraphNode *courseWeightedGraphNode = NewWeightedGraphNode(((Grade *) gradeElement->content)->course);
-        InsertToList(bipartiteWeightedGraph->rightNodes, courseWeightedGraphNode);
+        InsertToSortedListWithDuplicates(courses, ((Grade *) gradeElement->content)->course,
+                                         (int (*)(void *, void *)) compareCourse);
+
+        int *placeHolder = (int *) malloc(sizeof(int));
+        *placeHolder = ((Grade *) gradeElement->content)->term;
+        InsertToSortedListWithDuplicates(terms, placeHolder, (int (*)(void *, void *)) compareInt);
     }
 
-    addStudentTermCourseGraphEdges(bipartiteWeightedGraph);
-    return bipartiteWeightedGraph;
-}
+    float **termCourseMatrix = BuildStudentTermCourseMatrix(student, terms, courses);
 
-void addStudentTermCourseGraphEdges(BipartiteWeightedGraph *studentTermCourseGraph) {
-    for_each(courseNodeElement, studentTermCourseGraph->rightNodes) {
-        WeightedGraphNode *courseNode = (WeightedGraphNode *) courseNodeElement->content;
-        Course *course = (Course *) (courseNode)->content;
+    int size = student->grades->size;
 
-        int minTerm = *((int *) studentTermCourseGraph->leftNodes->first->content);
-        int maxTerm = *((int *) studentTermCourseGraph->leftNodes->last->content);
-        float *courseAvgs = GetCourseAvgScores(course, minTerm, maxTerm);
+    InvertCostMatrix(termCourseMatrix, size, size);
+    int mates[2 * size];
+    SolveAssignmentHungarian(termCourseMatrix, size, mates);
 
-        for_each(termNodeElement, studentTermCourseGraph->leftNodes) {
-
-            WeightedGraphNode *termNode = (WeightedGraphNode *) termNodeElement->content;
-            Edge *edge1 = NewEdge(termNode,
-                                  courseNode,
-                                  courseAvgs[*(int *) termNode->content - minTerm]);
-            InsertToList(termNode->edges, edge1);
-
-            // todo: is this necessary?
-            Edge *edge2 = NewEdge(courseNode,
-                                  termNode,
-                                  courseAvgs[*(int *) termNode->content - minTerm]);
-            InsertToList(courseNode->edges, edge2);
-        }
-    }
+    PrintTermCourseSelection(terms, courses, mates);
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
