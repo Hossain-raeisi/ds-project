@@ -628,6 +628,11 @@ int IsDescendant(GraphNode *node, GraphNode *root, DoubleLinkedList *visited, in
 
 // HUNGARIAN SOLUTION FOR MIN WEIGHT MATCHING --------------------------------------------------------------------------
 
+/*
+ * this implementation is based on
+ * https://homes.di.unimi.it/righini/Didattica/OttimizzazioneCombinatoria/MaterialeOC/11%20-%20Min%20cost%20bipartite%20matching.pdf
+ * and works only for n*n matrices with positive values
+ */
 int *SolveAssignmentHungarian(float **weightMatrix, int size, int *mates);
 
 void dualInitialization(float **weight, int size, float *U, float *V);
